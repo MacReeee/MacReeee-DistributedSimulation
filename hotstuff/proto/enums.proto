@@ -1,0 +1,16 @@
+syntax="proto3";
+option go_package="./pb";
+package pb;
+
+enum  MsgType {
+    PREPARE    = 0;
+	PRE_COMMIT  = 1;
+	COMMIT     = 2;
+	DECIDE     = 3;
+
+	PREPARE_VOTE    = 4;
+	PRE_COMMIT_VOTE  = 5;
+	COMMIT_VOTE     = 6;
+
+	NEW_VIEW  = 7;
+}

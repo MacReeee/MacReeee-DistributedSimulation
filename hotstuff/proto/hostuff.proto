@@ -1,0 +1,96 @@
+syntax="proto3";
+option go_package="./pb";
+package pb;
+
+import "google/protobuf/empty.proto";
+import "replica/proto/enums.proto";
+
+service hotstuff {
+    rpc Propose(Proposal) returns (google.protobuf.Empty);
+    rpc Vote(VoteRequest) returns (google.protobuf.Empty);
+    rpc PreCommit(Precommit) returns (google.protobuf.Empty);
+    rpc Commit(CommitMsg) returns (google.protobuf.Empty);
+    rpc Decide(DecideMsg) returns (google.protobuf.Empty);
+    rpc NewView(NewViewRequest) returns (google.protobuf.Empty);
+    // rpc Sync(SyncRequest) returns (SyncResponse);
+}
+
+message Proposal{
+    Block block = 1;
+    QC qc = 2;
+    optional aggQC aggqc = 3;
+
+    int64 proposal_id = 4;// 提案的唯一标识符
+    int32 proposer = 5;    // 提案者的标识
+    int64 view_number = 6; // 视图编号
+    bytes signature = 8;    // 提案的数字签名
+    int64 timestamp = 9;    // 时间戳
+    MsgType msg_type = 10;
+}
+
+message Precommit {
+    int32 id = 1;
+    MsgType msg_type = 2;
+    int64 view_number = 3;
+    QC qc =4 ;
+    bytes hash = 6; //区块的hash
+    bytes signature = 7; //bls签名，对区块的hash进行签名
+}
+
+message CommitMsg {
+    int32 id = 1;
+    MsgType msg_type = 2;
+    int64 view_number = 3;
+    QC qc =4 ;
+    bytes hash = 6; //区块的hash
+    bytes signature = 7; //bls签名，对区块的hash进行签名
+}
+
+message DecideMsg {
+    int32 id = 1;
+    MsgType msg_type = 2;
+    int64 view_number = 3;
+    QC qc =4 ;
+    bytes hash = 6; //区块的hash
+    bytes signature = 7; //bls签名，对区块的hash进行签名
+}
+
+message NewViewRequest {
+    int32 id = 1;
+    MsgType msg_type = 2;
+    int64 view_number = 3;
+    QC qc =4 ;
+    bytes signature = 7; //对QC进行签名
+}
+
+message Block {
+    QC qc = 1;
+    bytes ParentHash = 2;
+    bytes Hash = 3;
+    int64 Height = 4;
+    bytes cmd = 5;
+    int64 view_number = 6;
+}
+
+message QC {
+    bytes bls_signature = 1; //提案阶段是对区块的hash进行签名的聚合，后续阶段是对QC进行签名的聚合，即QC的QC
+    MsgType msg_type = 2;
+    int64 view_number = 3;
+    bytes blockHash = 4;
+}
+
+message aggQC {
+    repeated QC qcs = 1;
+    bytes bls_signature = 2;
+    MsgType msg_type = 3;
+    int64 view_number = 4;
+    bytes blockHash = 5;
+}
+
+message VoteRequest {
+    int64 proposal_id = 1;
+    int64 view_number = 2;
+    int32 voter = 3;
+    bytes signature = 4; //bls签名，对区块的hash进行签名
+    bytes hash = 5;
+}
