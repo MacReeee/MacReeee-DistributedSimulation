@@ -3,7 +3,7 @@ option go_package="./pb";
 package pb;
 
 import "google/protobuf/empty.proto";
-import "replica/proto/enums.proto";
+import "hotstuff/proto/enums.proto";
 
 service hotstuff {
     rpc Propose(Proposal) returns (google.protobuf.Empty);
@@ -11,7 +11,8 @@ service hotstuff {
     rpc PreCommit(Precommit) returns (google.protobuf.Empty);
     rpc Commit(CommitMsg) returns (google.protobuf.Empty);
     rpc Decide(DecideMsg) returns (google.protobuf.Empty);
-    rpc NewView(NewViewRequest) returns (google.protobuf.Empty);
+    rpc NewView(NewViewMsg) returns (google.protobuf.Empty);
+    rpc Timeout(TimeoutMsg) returns (google.protobuf.Empty);
     // rpc Sync(SyncRequest) returns (SyncResponse);
 }
 
@@ -55,11 +56,19 @@ message DecideMsg {
     bytes signature = 7; //bls签名，对区块的hash进行签名
 }
 
-message NewViewRequest {
+message NewViewMsg {
     int32 id = 1;
     MsgType msg_type = 2;
     int64 view_number = 3;
     QC qc =4 ;
+    bytes signature = 7; //对QC进行签名
+}
+
+message TimeoutMsg {
+    int32 id = 1;
+    MsgType msg_type = 2;
+    int64 view_number = 3;
+    QC qc = 4;
     bytes signature = 7; //对QC进行签名
 }
 

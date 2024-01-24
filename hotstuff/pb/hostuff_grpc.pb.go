@@ -26,6 +26,7 @@ const (
 	Hotstuff_Commit_FullMethodName    = "/pb.hotstuff/Commit"
 	Hotstuff_Decide_FullMethodName    = "/pb.hotstuff/Decide"
 	Hotstuff_NewView_FullMethodName   = "/pb.hotstuff/NewView"
+	Hotstuff_Timeout_FullMethodName   = "/pb.hotstuff/Timeout"
 )
 
 // HotstuffClient is the client API for Hotstuff service.
@@ -37,7 +38,8 @@ type HotstuffClient interface {
 	PreCommit(ctx context.Context, in *Precommit, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Commit(ctx context.Context, in *CommitMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Decide(ctx context.Context, in *DecideMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	NewView(ctx context.Context, in *NewViewRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	NewView(ctx context.Context, in *NewViewMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Timeout(ctx context.Context, in *TimeoutMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type hotstuffClient struct {
@@ -93,9 +95,18 @@ func (c *hotstuffClient) Decide(ctx context.Context, in *DecideMsg, opts ...grpc
 	return out, nil
 }
 
-func (c *hotstuffClient) NewView(ctx context.Context, in *NewViewRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *hotstuffClient) NewView(ctx context.Context, in *NewViewMsg, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Hotstuff_NewView_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hotstuffClient) Timeout(ctx context.Context, in *TimeoutMsg, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Hotstuff_Timeout_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +122,8 @@ type HotstuffServer interface {
 	PreCommit(context.Context, *Precommit) (*emptypb.Empty, error)
 	Commit(context.Context, *CommitMsg) (*emptypb.Empty, error)
 	Decide(context.Context, *DecideMsg) (*emptypb.Empty, error)
-	NewView(context.Context, *NewViewRequest) (*emptypb.Empty, error)
+	NewView(context.Context, *NewViewMsg) (*emptypb.Empty, error)
+	Timeout(context.Context, *TimeoutMsg) (*emptypb.Empty, error)
 	mustEmbedUnimplementedHotstuffServer()
 }
 
@@ -134,8 +146,11 @@ func (UnimplementedHotstuffServer) Commit(context.Context, *CommitMsg) (*emptypb
 func (UnimplementedHotstuffServer) Decide(context.Context, *DecideMsg) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Decide not implemented")
 }
-func (UnimplementedHotstuffServer) NewView(context.Context, *NewViewRequest) (*emptypb.Empty, error) {
+func (UnimplementedHotstuffServer) NewView(context.Context, *NewViewMsg) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NewView not implemented")
+}
+func (UnimplementedHotstuffServer) Timeout(context.Context, *TimeoutMsg) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Timeout not implemented")
 }
 func (UnimplementedHotstuffServer) mustEmbedUnimplementedHotstuffServer() {}
 
@@ -241,7 +256,7 @@ func _Hotstuff_Decide_Handler(srv interface{}, ctx context.Context, dec func(int
 }
 
 func _Hotstuff_NewView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NewViewRequest)
+	in := new(NewViewMsg)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -253,7 +268,25 @@ func _Hotstuff_NewView_Handler(srv interface{}, ctx context.Context, dec func(in
 		FullMethod: Hotstuff_NewView_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HotstuffServer).NewView(ctx, req.(*NewViewRequest))
+		return srv.(HotstuffServer).NewView(ctx, req.(*NewViewMsg))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Hotstuff_Timeout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TimeoutMsg)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HotstuffServer).Timeout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Hotstuff_Timeout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HotstuffServer).Timeout(ctx, req.(*TimeoutMsg))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -288,6 +321,10 @@ var Hotstuff_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "NewView",
 			Handler:    _Hotstuff_NewView_Handler,
+		},
+		{
+			MethodName: "Timeout",
+			Handler:    _Hotstuff_Timeout_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

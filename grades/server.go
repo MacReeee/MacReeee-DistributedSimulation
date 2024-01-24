@@ -26,6 +26,7 @@ func (sh studentsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch len(pathSegments) {
 	case 2:
 		sh.getAll(w, r)
+		log.Println("get all")
 	case 3:
 		id, err := strconv.Atoi(pathSegments[2])
 		if err != nil {
@@ -33,6 +34,7 @@ func (sh studentsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		sh.getOne(w, r, id)
+		log.Println("get one")
 	case 4:
 		id, err := strconv.Atoi(pathSegments[2])
 		if err != nil {
@@ -40,6 +42,7 @@ func (sh studentsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		sh.addGrade(w, r, id)
+		log.Println("add grade")
 	default:
 		w.WriteHeader(http.StatusNotFound)
 	}

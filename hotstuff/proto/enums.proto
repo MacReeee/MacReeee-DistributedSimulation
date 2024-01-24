@@ -13,4 +13,5 @@ enum  MsgType {
 	COMMIT_VOTE     = 6;
 
 	NEW_VIEW  = 7;
+	TIME_OUT = 8;
 }
