@@ -72,3 +72,18 @@ func (chain *Blockchain) PruneBlock(block *Block, NewestChild *Block) []string {
 	}
 	return deleted
 }
+
+func (chain *Blockchain) CreateBlock(ParentHash []byte, Height int64, ViewNumber int64, QC *pb.QC, Cmd []byte) *Block {
+	return &Block{
+		Block: &pb.Block{
+			Hash:       nil,
+			ParentHash: ParentHash,
+			Height:     Height,
+			ViewNumber: ViewNumber,
+			Qc:         QC,
+			Cmd:        Cmd,
+		},
+		Proposer: 0,
+		Children: nil,
+	}
+}

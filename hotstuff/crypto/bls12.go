@@ -1,8 +1,10 @@
 package crypto
 
 import (
+	"distributed/hotstuff/modules"
 	"encoding/base64"
 	"fmt"
+	"log"
 
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/pairing"
@@ -93,4 +95,42 @@ func ThresholdSign(msg []byte, SigMap map[kyber.Point][]byte) ([]byte, kyber.Poi
 	}
 
 	return aggSigBytes, aggPub, nil
+}
+
+type SignerAndVerifier struct {
+	privKey kyber.Scalar
+	pubKey  kyber.Point
+}
+
+func NewSignerAndVerifier(priv []byte, pub []byte) *SignerAndVerifier {
+	privKey, err := GetPrivKey(priv)
+	if err != nil {
+		log.Println("转换私钥失败:", err)
+	}
+	pubKey, err := GetPubKey(pub)
+	if err != nil {
+		log.Println("转换公钥失败:", err)
+	}
+	s := &SignerAndVerifier{
+		privKey: privKey,
+		pubKey:  pubKey,
+	}
+	modules.MODULES.SignerAndVerifier = s
+	return s
+}
+
+func (s *SignerAndVerifier) Sign(msg []byte) ([]byte, error) {
+	return bdn.Sign(suite, s.privKey, msg)
+}
+
+func (s *SignerAndVerifier) PartSign(msg []byte) ([]byte, error) {
+	return PartSign(msg, s.privKey)
+}
+
+func (s *SignerAndVerifier) Verify(msg []byte, sig []byte) bool {
+	return Verify(msg, sig, s.pubKey)
+}
+
+func (s *SignerAndVerifier) ThreshVerify(msg []byte, sig []byte, pubKey kyber.Point) bool {
+	return Verify(msg, sig, pubKey)
 }

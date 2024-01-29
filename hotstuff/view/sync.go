@@ -26,13 +26,14 @@ type Synchronize struct {
 	timeouts    map[int64]map[int32]*pb.TimeoutMsg
 }
 
-func New(viewDuration ViewDuration) *Synchronize {
+func New() *Synchronize {
+	viewDuration := NewViewDuration(float64(MAX_Timeout), 1)
 	Synchronizer := &Synchronize{
 		currentView: 1,
 		highQC:      nil,
 		highTC:      nil,
 		duration:    viewDuration,
-		timer:       nil,
+		timer:       nil, //超时后打印日志
 		timeouts:    make(map[int64]map[int32]*pb.TimeoutMsg),
 	}
 	modules.MODULES.Synchronizer = Synchronizer
@@ -45,17 +46,14 @@ func (s *Synchronize) startTimeOutTimer() {
 	})
 }
 
-// ctx是整个视图链的ctx
+// 启动一个视图，不是整个视图链，ctx是viewDuration中的ctx
 func (s *Synchronize) Start(ctx context.Context) {
 	s.startTimeOutTimer()
-
 	//如果视图正常退出，则执行这个协程
 	go func() {
 		<-ctx.Done()
 		s.timer.Stop()
 	}()
-
-	//启动整个共识过程
 }
 
 func (s *Synchronize) GetLeader(viewnumber int64) int32 {

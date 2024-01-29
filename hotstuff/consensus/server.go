@@ -3,9 +3,14 @@ package hotstuff
 import (
 	"context"
 	"distributed/hotstuff/blockchain"
+	"distributed/hotstuff/modules"
 	"distributed/hotstuff/pb"
 	"fmt"
+	"log"
+	"net"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -58,4 +63,29 @@ func (*ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*emp
 func (*ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) (*emptypb.Empty, error) {
 
 	return nil, nil
+}
+
+func NewReplicaServer() *grpc.Server {
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", ReplicaID+4000))
+	if err != nil {
+		log.Println("副本服务监听失败:", err)
+	}
+	server := grpc.NewServer()
+	pb.RegisterHotstuffServer(server, &ReplicaServer{})
+	log.Println("副本服务启动成功")
+	server.Serve(listener)
+	modules.MODULES.ReplicaServer = server
+	return server
+}
+
+func NewReplicaClient(id int32) *pb.HotstuffClient {
+	conn, err := grpc.Dial(fmt.Sprintf(":%d", id+4000), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Println("副本客户端连接失败:", err)
+	}
+	defer conn.Close()
+	log.Println("副本客户端连接成功")
+	client := pb.NewHotstuffClient(conn)
+	modules.MODULES.ReplicaClient[id] = client
+	return &client
 }

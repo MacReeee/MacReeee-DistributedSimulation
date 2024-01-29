@@ -21,7 +21,7 @@ type ViewDuration interface {
 func NewViewDuration(maxTimeout, multiplier float64) ViewDuration {
 	return &viewDuration{
 		max:        maxTimeout,
-		timeoutMul: 1,
+		timeoutMul: multiplier,
 		ctx:        context.Background(),
 	}
 }
@@ -50,10 +50,14 @@ func (v *viewDuration) ViewStarted() {
 func (v *viewDuration) ViewSucceeded(s *Synchronize) {
 	v.timeoutMul = 1
 	s.duration = NewViewDuration(v.max, v.timeoutMul)
+	ctx, _ := context.WithTimeout(v.ctx, v.Duration())
+	s.Start(ctx)
 }
 
 // ViewTimeout 在视图超时时应调用。它将当前平均值乘以'mul'。
 func (v *viewDuration) ViewTimeout(s *Synchronize) {
 	v.timeoutMul *= 2
 	s.duration = NewViewDuration(v.max, v.timeoutMul)
+	ctx, _ := context.WithTimeout(v.ctx, v.Duration())
+	s.Start(ctx)
 }
