@@ -139,7 +139,7 @@ func (r *registry) heartbeat(freq time.Duration) {
 						if !success {
 							r.add(reg)
 						}
-						break;
+						break
 					}
 					log.Printf("Heartbeat check failed for %v", reg.ServiceName)
 					if success {

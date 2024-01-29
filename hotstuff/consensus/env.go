@@ -1,15 +1,21 @@
 package hotstuff
 
-import "distributed/hotstuff/pb"
+import (
+	"distributed/hotstuff/blockchain"
+	"distributed/hotstuff/pb"
+)
 
-var ReplicaID int32 = 1                    //副本ID
-var LockedQC *pb.QC                        //LockedQC
-var PrepareQC *pb.QC                       //PrepareQC
-var curViewNumber int64 = 0                //当前视图编号
-var TempBlockMap = make(map[string]*Block) //临时存储的区块，用于存储收到的Prepare消息中的区块
+var (
+	NumReplicas int32 = 4 //副本数量
+	ReplicaID   int32 = 1 //副本ID
+)
+var LockedQC *pb.QC                                   //LockedQC
+var PrepareQC *pb.QC                                  //PrepareQC
+var curViewNumber int64 = 1                           //当前视图编号
+var TempBlockMap = make(map[string]*blockchain.Block) //临时存储的区块，用于存储收到的Prepare消息中的区块
 
-var PrivateKey []byte = []byte("V5PGwk21S2gxQ2M2Madm079kH6bgvISCc8ypdRgDG7Y=") //私钥
-var PublicKey []byte = []byte("a18jcN2ymGwHW6sfM+36Z6WH6eEjmD1vyTHejDd/V4sIyd" +
+var PrivateKey = []byte("V5PGwk21S2gxQ2M2Madm079kH6bgvISCc8ypdRgDG7Y=") //私钥
+var PublicKey = []byte("a18jcN2ymGwHW6sfM+36Z6WH6eEjmD1vyTHejDd/V4sIyd" +
 	"MUSzID2emC0A95mVcj9nJzgPSYdzGkXmdzrlfb6hKB+flqtJPPA/gwDT2ym5vPVIEJfPz4W9" +
 	"Xbp2kaU07LIgoGTXbzCory9Xw0MYu/zW04iKukoXq/FTd56YNCsiE=") //公钥
 
@@ -18,7 +24,7 @@ type KeyPair struct {
 	PrivateKey string `json:"PrivateKey"`
 }
 
-var KeyPairs []KeyPair = []KeyPair{
+var KeyPairs = []KeyPair{
 	{
 		PublicKey:  "a18jcN2ymGwHW6sfM+36Z6WH6eEjmD1vyTHejDd/V4sIydMUSzID2emC0A95mVcj9nJzgPSYdzGkXmdzrlfb6hKB+flqtJPPA/gwDT2ym5vPVIEJfPz4W9Xbp2kaU07LIgoGTXbzCory9Xw0MYu/zW04iKukoXq/FTd56YNCsiE=",
 		PrivateKey: "V5PGwk21S2gxQ2M2Madm079kH6bgvISCc8ypdRgDG7Y=",

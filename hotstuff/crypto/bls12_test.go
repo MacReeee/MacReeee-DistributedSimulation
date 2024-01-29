@@ -28,3 +28,10 @@ func TestThresholdSign(t *testing.T) {
 	thSig, aggPub, _ := ThresholdSign(msg, sigMap)
 	fmt.Println(Verify(msg, thSig, aggPub))
 }
+
+func TestNilVerify(t *testing.T) {
+	msg := []byte("Hello World")
+
+	sig, _ := PartSign(msg, nil)
+	fmt.Println(Verify(msg, sig, nil))
+}
