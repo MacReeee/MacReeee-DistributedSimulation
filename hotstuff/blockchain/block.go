@@ -25,6 +25,7 @@ var GenesisBlock = &Block{
 	Children: nil, // 子区块列表
 }
 
+//
 type Blockchain struct {
 	Mut           sync.Mutex        // 互斥锁，用于保护区块链的并发访问
 	PruneHeight   int64             // 剪枝高度
