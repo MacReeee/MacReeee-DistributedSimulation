@@ -35,7 +35,7 @@ type viewDuration struct {
 	ctx        context.Context
 }
 
-// Duration 返回平均视图持续时间
+// Duration 返回视图持续时间
 func (v *viewDuration) Duration() time.Duration {
 	return time.Duration(500*v.timeoutMul) * time.Millisecond
 }

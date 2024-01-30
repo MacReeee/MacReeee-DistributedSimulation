@@ -35,11 +35,12 @@ func (*ReplicaServer) Propose(ctx context.Context, Proposal *pb.Proposal) (*empt
 	}
 
 	//todo: 视图
-	// PrepareVoteMsg := &pb.VoteRequest{
-	// 	ProposalId: Proposal.ProposalId,
-	// 	ViewNumber: curViewNumber,
-	// 	Voter:      ReplicaID,
-	// }
+	PrepareVoteMsg := &pb.VoteRequest{
+		ProposalId: Proposal.ProposalId,
+		ViewNumber: curViewNumber,
+		Voter:      ReplicaID,
+	}
+	leader := modules.MODULES.Synchronizer.GetLeader()
 
 	return &emptypb.Empty{}, nil
 }

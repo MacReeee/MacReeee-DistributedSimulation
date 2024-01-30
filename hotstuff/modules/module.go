@@ -1,5 +1,8 @@
 package modules
 
+type Chain interface {
+}
+
 type modules struct {
 	Chain             any
 	Synchronizer      any

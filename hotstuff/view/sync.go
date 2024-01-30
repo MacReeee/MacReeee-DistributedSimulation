@@ -18,8 +18,8 @@ var (
 // 仅计时相关以及视图切换，不参与共识过程
 type Synchronize struct {
 	mut         sync.Mutex
-	currentView int64
-	highQC      *pb.QC //开启一个视图需要一个HighQC
+	CurrentView int64
+	HighQC      *pb.QC //开启一个视图需要一个HighQC
 	highTC      *pb.QC
 	duration    ViewDuration
 	timer       *time.Timer //是一个log记录器，在计时器结束后执行日志记录等相关函数，如果有需要超时后执行的函数，可以使用这个
@@ -29,8 +29,8 @@ type Synchronize struct {
 func New() *Synchronize {
 	viewDuration := NewViewDuration(float64(MAX_Timeout), 1)
 	Synchronizer := &Synchronize{
-		currentView: 1,
-		highQC:      nil,
+		CurrentView: 1,
+		HighQC:      nil,
 		highTC:      nil,
 		duration:    viewDuration,
 		timer:       nil, //超时后打印日志
@@ -56,8 +56,11 @@ func (s *Synchronize) Start(ctx context.Context) {
 	}()
 }
 
-func (s *Synchronize) GetLeader(viewnumber int64) int32 {
-	return int32(viewnumber)%hotstuff.NumReplicas + 1
+func (s *Synchronize) GetLeader(viewnumber ...int64) int32 {
+	if len(viewnumber) == 0 {
+		return int32(s.CurrentView)%hotstuff.NumReplicas + 1
+	}
+	return int32(viewnumber[0])%hotstuff.NumReplicas + 1
 }
 
 type ViewChangeEvent struct {
