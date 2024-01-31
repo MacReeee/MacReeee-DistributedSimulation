@@ -79,6 +79,8 @@ message Block {
     int64 Height = 4;
     bytes cmd = 5;
     int64 view_number = 6;
+    int32 Proposer = 7;
+    repeated string Children = 8;
 }
 
 message QC {

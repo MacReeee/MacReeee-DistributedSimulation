@@ -1,7 +1,6 @@
 package hotstuff
 
 import (
-	"distributed/hotstuff/blockchain"
 	"distributed/hotstuff/pb"
 )
 
@@ -9,10 +8,10 @@ var (
 	NumReplicas int32 = 4 //副本数量
 	ReplicaID   int32 = 1 //副本ID
 )
-var LockedQC *pb.QC                                   //LockedQC
-var PrepareQC *pb.QC                                  //PrepareQC
-var curViewNumber int64 = 1                           //当前视图编号
-var TempBlockMap = make(map[string]*blockchain.Block) //临时存储的区块，用于存储收到的Prepare消息中的区块
+var LockedQC *pb.QC         //LockedQC
+var PrepareQC *pb.QC        //PrepareQC
+var curViewNumber int64 = 1 //当前视图编号
+// var TempBlockMap = make(map[string]*pb.Block) //临时存储的区块，用于存储收到的Prepare消息中的区块
 
 var PrivateKey = []byte("V5PGwk21S2gxQ2M2Madm079kH6bgvISCc8ypdRgDG7Y=") //私钥
 var PublicKey = []byte("a18jcN2ymGwHW6sfM+36Z6WH6eEjmD1vyTHejDd/V4sIyd" +

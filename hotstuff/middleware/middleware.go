@@ -22,15 +22,10 @@ type Crypto interface {
 	Verify(msg []byte, sig []byte) bool
 }
 
-type Block struct {
-	Block    *pb.Block // 区块结构体，包含了区块的各个属性
-	Proposer int32     // 提议者的ID
-	Children []*Block  // 子区块列表
-}
-
 type Chain interface {
-	CreateBlock(ParentHash []byte, Height int64, ViewNumber int64, QC *pb.QC, Cmd []byte) *Block
-	GetBlock(hash []byte) *Block
-	PruneBlock(block *Block, NewestChild *Block) []string
-	Store(block *Block)
+	CreateBlock(ParentHash []byte, Height int64, ViewNumber int64, QC *pb.QC, Cmd []byte) *pb.Block
+	GetBlock(hash []byte) *pb.Block
+	PruneBlock(block *pb.Block, NewestChild *pb.Block) []string
+	Store(block *pb.Block)
+	StoreTemp(block *pb.Block)
 }

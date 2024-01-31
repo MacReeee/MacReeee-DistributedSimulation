@@ -2,12 +2,12 @@ package hotstuff
 
 import (
 	"context"
-	"distributed/hotstuff/blockchain"
 	"distributed/hotstuff/modules"
 	"distributed/hotstuff/pb"
 	"fmt"
 	"log"
 	"net"
+	stsync "sync"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -21,6 +21,10 @@ var (
 )
 
 type ReplicaServer struct {
+	stsync.Mutex
+	threshold int
+	wg        stsync.WaitGroup
+
 	pb.UnimplementedHotstuffServer
 }
 
@@ -35,11 +39,8 @@ func (*ReplicaServer) Propose(ctx context.Context, Proposal *pb.Proposal) (*empt
 	//todo: 重置计时器
 	sync.TimerReset()
 
-	TempBlockMap[string(Proposal.Block.Hash)] = &blockchain.Block{
-		Block:    Proposal.Block,
-		Proposer: Proposal.Proposer,
-		Children: nil,
-	}
+	// 临时存储区块
+	chain.StoreTemp(Proposal.Block)
 
 	sig, err := crypto_.PartSign(Proposal.Signature)
 	if err != nil {
@@ -52,12 +53,12 @@ func (*ReplicaServer) Propose(ctx context.Context, Proposal *pb.Proposal) (*empt
 		MsgType:    pb.MsgType_PREPARE_VOTE,
 		Signature:  sig,
 	}
-	leader := *(modules.MODULES.ReplicaClient[sync.GetLeader()])
+	leader := *modules.MODULES.ReplicaClient[sync.GetLeader()]
 	leader.Vote(sync.GetContext(), PrepareVoteMsg)
 	return &emptypb.Empty{}, nil
 }
 
-func (*ReplicaServer) Vote(ctx context.Context, vote *pb.VoteRequest) (*emptypb.Empty, error) {
+func (s *ReplicaServer) Vote(ctx context.Context, vote *pb.VoteRequest) (*emptypb.Empty, error) {
 
 	return nil, nil
 }
