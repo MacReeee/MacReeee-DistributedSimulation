@@ -22,6 +22,7 @@ var (
 
 type ReplicaServer struct {
 	stsync.Mutex
+	count     int
 	threshold int
 	wg        stsync.WaitGroup
 
@@ -60,6 +61,18 @@ func (*ReplicaServer) Propose(ctx context.Context, Proposal *pb.Proposal) (*empt
 
 func (s *ReplicaServer) Vote(ctx context.Context, vote *pb.VoteRequest) (*emptypb.Empty, error) {
 
+	s.Lock()
+	s.count++
+	if s.count == 1 {
+		s.wg.Add(s.threshold) // 第一个投票到达时设置等待组的计数器
+	}
+	if s.count >= s.threshold { // 达到阈值，让所有客户端继续执行
+		s.wg.Done()
+		s.count = 0 // 重置计数器，等待下一批客户端调用
+	}
+	s.Unlock()
+
+	s.wg.Wait() // 如果还没达到阈值，此处等待
 	return nil, nil
 }
 func (*ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommit) (*emptypb.Empty, error) {
@@ -85,7 +98,10 @@ func NewReplicaServer() *grpc.Server {
 		log.Println("副本服务监听失败:", err)
 	}
 	server := grpc.NewServer()
-	pb.RegisterHotstuffServer(server, &ReplicaServer{})
+	pb.RegisterHotstuffServer(server, &ReplicaServer{
+		threshold: 2,
+		count:     0,
+	})
 	log.Println("副本服务启动成功")
 	server.Serve(listener)
 	modules.MODULES.ReplicaServer = server
