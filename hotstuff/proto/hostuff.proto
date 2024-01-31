@@ -35,7 +35,7 @@ message Precommit {
     int64 view_number = 3;
     QC qc =4 ;
     bytes hash = 6; //区块的hash
-    bytes signature = 7; //bls签名，对区块的hash进行签名
+    bytes signature = 7; //直接对接收到的消息的签名进行签名
 }
 
 message CommitMsg {
@@ -44,7 +44,7 @@ message CommitMsg {
     int64 view_number = 3;
     QC qc =4 ;
     bytes hash = 6; //区块的hash
-    bytes signature = 7; //bls签名，对区块的hash进行签名
+    bytes signature = 7; //直接对接收到的消息的签名进行签名
 }
 
 message DecideMsg {
@@ -53,7 +53,7 @@ message DecideMsg {
     int64 view_number = 3;
     QC qc =4 ;
     bytes hash = 6; //区块的hash
-    bytes signature = 7; //bls签名，对区块的hash进行签名
+    bytes signature = 7; //直接对接收到的消息的签名进行签名
 }
 
 message NewViewMsg {
@@ -100,6 +100,7 @@ message VoteRequest {
     int64 proposal_id = 1;
     int64 view_number = 2;
     int32 voter = 3;
-    bytes signature = 4; //bls签名，对区块的hash进行签名
+    bytes signature = 4; //直接对接收到的消息的签名进行签名
     bytes hash = 5;
+    MsgType msg_type = 6;
 }

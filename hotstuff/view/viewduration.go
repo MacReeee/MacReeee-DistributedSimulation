@@ -12,6 +12,7 @@ type ViewDuration interface {
 	ViewStarted()               // ViewStarted 在启动新视图时由同步器调用。
 	ViewSucceeded(*Synchronize) // ViewSucceeded 在视图成功结束时由同步器调用。
 	ViewTimeout(*Synchronize)   // ViewTimeout 在视图超时时由同步器调用。
+	GetContext() context.Context
 }
 
 // NewViewDuration 返回一个ViewDuration，它基于先前视图的持续时间来近似视图持续时间。
@@ -49,6 +50,7 @@ func (v *viewDuration) ViewStarted() {
 // 并更新用于计算平均值和方差的内部值。
 func (v *viewDuration) ViewSucceeded(s *Synchronize) {
 	v.timeoutMul = 1
+	s.CurrentView++
 	s.duration = NewViewDuration(v.max, v.timeoutMul)
 	ctx, _ := context.WithTimeout(v.ctx, v.Duration())
 	s.Start(ctx)
@@ -57,7 +59,12 @@ func (v *viewDuration) ViewSucceeded(s *Synchronize) {
 // ViewTimeout 在视图超时时应调用。它将当前平均值乘以'mul'。
 func (v *viewDuration) ViewTimeout(s *Synchronize) {
 	v.timeoutMul *= 2
+	s.CurrentView++
 	s.duration = NewViewDuration(v.max, v.timeoutMul)
 	ctx, _ := context.WithTimeout(v.ctx, v.Duration())
 	s.Start(ctx)
+}
+
+func (v *viewDuration) GetContext() context.Context {
+	return v.ctx
 }

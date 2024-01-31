@@ -1,16 +1,13 @@
 package blockchain
 
 import (
+	"distributed/hotstuff/middleware"
 	"distributed/hotstuff/modules"
 	"distributed/hotstuff/pb"
 	"sync"
 )
 
-type Block struct {
-	Block    *pb.Block // 区块结构体，包含了区块的各个属性
-	Proposer int32     // 提议者的ID
-	Children []*Block  // 子区块列表
-}
+type Block middleware.Block
 
 var GenesisBlock = &Block{
 	Block: &pb.Block{
@@ -25,7 +22,8 @@ var GenesisBlock = &Block{
 	Children: nil, // 子区块列表
 }
 
-//
+var TempBlockMap = make(map[string]*Block)
+
 type Blockchain struct {
 	Mut           sync.Mutex        // 互斥锁，用于保护区块链的并发访问
 	PruneHeight   int64             // 剪枝高度
@@ -39,30 +37,35 @@ func NewBlockChain() *Blockchain {
 		Blocks:        make(map[string]*Block), // 初始化区块映射表
 		BlockAtHeight: make(map[int64]*Block),  // 初始化高度映射表
 	}
-	blockchain.Store(GenesisBlock) // 存储创世区块
+	blockchain.Store((*middleware.Block)(GenesisBlock)) // 存储创世区块
 	modules.MODULES.Chain = blockchain
 	return blockchain
 }
 
 // 存储区快
-func (bc *Blockchain) Store(block *Block) {
-	bc.Mut.Lock()                                // 加锁
-	defer bc.Mut.Unlock()                        // 解锁
-	bc.Blocks[string(block.Block.Hash)] = block  // 将区块存储到区块映射表中
-	bc.BlockAtHeight[block.Block.Height] = block // 将区块存储到高度映射表中
+func (bc *Blockchain) Store(block *middleware.Block) {
+	bc.Mut.Lock()                                          // 加锁
+	defer bc.Mut.Unlock()                                  // 解锁
+	bc.Blocks[string(block.Block.Hash)] = (*Block)(block)  // 将区块存储到区块映射表中
+	bc.BlockAtHeight[block.Block.Height] = (*Block)(block) // 将区块存储到高度映射表中
 	//存储父区块的children字段
 	bc.Blocks[string(block.Block.ParentHash)].Children = append(bc.Blocks[string(block.Block.ParentHash)].Children, block)
 }
 
+func (bc *Blockchain) StoreTemp(block *middleware.Block) {
+	bc.Mut.Lock() // 加锁
+	defer bc.Mut.Unlock()
+}
+
 // 给定区块的哈希，查找对应的区块
-func (bc *Blockchain) GetBlock(hash []byte) *Block {
+func (bc *Blockchain) GetBlock(hash []byte) *middleware.Block {
 	return nil
 }
 
 // 剪枝
 // todo 此处可以检查被剪枝的区块来检测分叉，不做
 // 被提交的最新区块的上一个区块才需要剪枝
-func (chain *Blockchain) PruneBlock(block *Block, NewestChild *Block) []string {
+func (chain *Blockchain) PruneBlock(block *middleware.Block, NewestChild *middleware.Block) []string {
 	var deleted []string
 	for _, child := range block.Children {
 		if child == NewestChild {
@@ -74,8 +77,8 @@ func (chain *Blockchain) PruneBlock(block *Block, NewestChild *Block) []string {
 	return deleted
 }
 
-func (chain *Blockchain) CreateBlock(ParentHash []byte, Height int64, ViewNumber int64, QC *pb.QC, Cmd []byte) *Block {
-	return &Block{
+func (chain *Blockchain) CreateBlock(ParentHash []byte, Height int64, ViewNumber int64, QC *pb.QC, Cmd []byte) *middleware.Block {
+	return &middleware.Block{
 		Block: &pb.Block{
 			Hash:       nil,
 			ParentHash: ParentHash,

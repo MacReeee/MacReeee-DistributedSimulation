@@ -14,6 +14,12 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+var (
+	sync    = modules.MODULES.Synchronizer
+	crypto_ = modules.MODULES.SignerAndVerifier
+	chain   = modules.MODULES.Chain
+)
+
 type ReplicaServer struct {
 	pb.UnimplementedHotstuffServer
 }
@@ -27,6 +33,7 @@ func (*ReplicaServer) Propose(ctx context.Context, Proposal *pb.Proposal) (*empt
 		return nil, fmt.Errorf("proposal is not safe")
 	}
 	//todo: 重置计时器
+	sync.TimerReset()
 
 	TempBlockMap[string(Proposal.Block.Hash)] = &blockchain.Block{
 		Block:    Proposal.Block,
@@ -34,14 +41,19 @@ func (*ReplicaServer) Propose(ctx context.Context, Proposal *pb.Proposal) (*empt
 		Children: nil,
 	}
 
-	//todo: 视图
+	sig, err := crypto_.PartSign(Proposal.Signature)
+	if err != nil {
+		log.Println("部分签名失败")
+	}
 	PrepareVoteMsg := &pb.VoteRequest{
 		ProposalId: Proposal.ProposalId,
 		ViewNumber: curViewNumber,
 		Voter:      ReplicaID,
+		MsgType:    pb.MsgType_PREPARE_VOTE,
+		Signature:  sig,
 	}
-	leader := modules.MODULES.Synchronizer.GetLeader()
-
+	leader := *(modules.MODULES.ReplicaClient[sync.GetLeader()])
+	leader.Vote(sync.GetContext(), PrepareVoteMsg)
 	return &emptypb.Empty{}, nil
 }
 
@@ -87,6 +99,6 @@ func NewReplicaClient(id int32) *pb.HotstuffClient {
 	defer conn.Close()
 	log.Println("副本客户端连接成功")
 	client := pb.NewHotstuffClient(conn)
-	modules.MODULES.ReplicaClient[id] = client
+	modules.MODULES.ReplicaClient[id] = &client
 	return &client
 }
