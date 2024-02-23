@@ -47,7 +47,7 @@ func (bc *Blockchain) Store(block *pb.Block) {
 	bc.Blocks[string(block.ParentHash)].Children = append(bc.Blocks[string(block.ParentHash)].Children, string(block.Hash))
 }
 
-func (bc *Blockchain) StoreTemp(block *pb.Block) {
+func (bc *Blockchain) StoreToTemp(block *pb.Block) {
 	bc.Mut.Lock() // 加锁
 	defer bc.Mut.Unlock()
 	TempBlockMap[string(block.Hash)] = block
@@ -56,6 +56,10 @@ func (bc *Blockchain) StoreTemp(block *pb.Block) {
 // 给定区块的哈希，查找对应的区块
 func (bc *Blockchain) GetBlock(hash []byte) *pb.Block {
 	return bc.Blocks[string(hash)]
+}
+
+func (bc *Blockchain) GetBlockFromTemp(hash []byte) *pb.Block {
+	return TempBlockMap[string(hash)]
 }
 
 // 剪枝

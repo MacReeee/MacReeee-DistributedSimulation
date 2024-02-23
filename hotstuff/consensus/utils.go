@@ -2,8 +2,8 @@ package hotstuff
 
 import "distributed/hotstuff/pb"
 
-func MatchingMsg(Proposal *pb.Proposal, Type pb.MsgType, viewNumber int64) bool {
-	return Proposal.MsgType == Type && Proposal.ViewNumber == viewNumber
+func MatchingMsg(Type pb.MsgType, ViewNumber int64, TarType pb.MsgType, TarviewNumber int64) bool {
+	return Type == TarType && ViewNumber == TarviewNumber
 }
 
 func SafeNode(block *pb.Block, qc *pb.QC) bool {

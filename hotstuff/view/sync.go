@@ -23,6 +23,7 @@ type Synchronize struct {
 	HighTC      *pb.QC
 	duration    ViewDuration
 	timer       *time.Timer //每个视图的计时器，超时后打印日志
+	
 	timeouts    map[int64]map[int32]*pb.TimeoutMsg
 }
 

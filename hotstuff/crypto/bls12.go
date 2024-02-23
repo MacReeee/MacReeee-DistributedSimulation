@@ -14,8 +14,13 @@ import (
 
 var suite = pairing.NewSuiteBn256()
 
-// 初始化时存储所有的公钥
-var ALL_PUBLIC_KEYS []kyber.Point
+// todo: 初始化时存储所有的公钥
+var ALL_PUBLIC_KEYS = []kyber.Point{
+	GetPubKey([]byte("T4EXVUEVDV+FdrC7EKqIp932R47XWkf6AKKEbhV6fqWFusIVi4gsUxnNNDBvSoO/+ckKXWQJ2ewklcTLJvWdQFl9hfkqQ/L/tezCpDZTxN8Hj4aRICXTw9rDHCDGjK/MRpDr6V7Xfz9K/LnYKZV0hhg3/GibzbGyunfImMC4n0s=")),
+	GetPubKey([]byte("gpS8ARul05I5VV+qQR9s+ls4VwiWs2yCYJ2zB3AwHqFxuPttDqE6ZOpvpIru27P7zoXpPu4xyS3s/V5/Wi4Vam4ohGfud0ThKyyXObS53ATBGx1LgRU64dbx6FyrtO5MAkvzBsXR2Yl/VQ88IkGdumNkuZwpWRLEoeRVjeyinng=")),
+	GetPubKey([]byte("js6Y32MFO384n5kVdkHaW7VIjZDTL3wnbfo7n/LscgQVSuqiuK24G8XyV/9XagHcdGXR200BPJATbbD3jtvs1ECAxCSnxY+fMDkrTYzTdBdTcvNq256Bmy+l9AaLstc2CXQsMoCJfvf1nCjfVrImrTkW5j/eCuhzXWO3PpdEwoo=")),
+	GetPubKey([]byte("PHUkbumWlmbLVAiMiDH3R9TLVRrFlxektKLuJCzYzyU/RwMigm7T8lutcGwoWCrZG0YaWlyP6cJQGW5yYuB7Qo40AMLTLgExRNxFD057kXNby0XbaQERAOfngRfzqBkqCzPE8YgQh8XS3MunxG/2NBkM644r+h6nopkWqBWgqR0=")),
+}
 
 func PartSign(msg []byte, privKey kyber.Scalar) ([]byte, error) {
 	sig, err := bdn.Sign(suite, privKey, msg)
@@ -26,34 +31,38 @@ func Verify(msg []byte, sig []byte, pubKey kyber.Point) bool {
 	return bdn.Verify(suite, pubKey, msg, sig) == nil
 }
 
-func GetPrivKey(privateKey []byte) (kyber.Scalar, error) {
+func GetPrivKey(privateKey []byte) kyber.Scalar { //将私钥转换为kyber.Scalar类型
 	decoded, err := base64.StdEncoding.DecodeString(string(privateKey))
 	if err != nil {
-		return nil, err
+		log.Println("base64解码私钥失败:", err)
+		return nil
 	}
 
 	privKey := suite.G2().Scalar()
 	err = privKey.UnmarshalBinary(decoded)
 	if err != nil {
-		return nil, err
+		log.Println("解码私钥失败:", err)
+		return nil
 	}
 
-	return privKey, nil
+	return privKey
 }
 
-func GetPubKey(publicKey []byte) (kyber.Point, error) {
+func GetPubKey(publicKey []byte) kyber.Point { //将公钥转换为kyber.Point类型
 	decoded, err := base64.StdEncoding.DecodeString(string(publicKey))
 	if err != nil {
-		return nil, err
+		log.Println("base64解码公钥失败:", err)
+		return nil
 	}
 
 	pubKey := suite.G2().Point()
 	err = pubKey.UnmarshalBinary(decoded)
 	if err != nil {
-		return nil, err
+		log.Println("解码公钥失败:", err)
+		return nil
 	}
 
-	return pubKey, nil
+	return pubKey
 }
 
 // pubKeys是参与签名的节点的公钥
@@ -68,6 +77,8 @@ func ThresholdSign(msg []byte, SigMap map[kyber.Point][]byte) ([]byte, kyber.Poi
 	for i := range pubKeys {
 		mask.SetBit(i, false)
 	}
+
+	fmt.Println("mask:", mask)
 	for i, v := range ALL_PUBLIC_KEYS {
 		if sig, ok := SigMap[v]; ok {
 			mask.SetBit(i, true)
@@ -103,14 +114,10 @@ type SignerAndVerifier struct {
 }
 
 func NewSignerAndVerifier(priv []byte, pub []byte) *SignerAndVerifier {
-	privKey, err := GetPrivKey(priv)
-	if err != nil {
-		log.Println("转换私钥失败:", err)
-	}
-	pubKey, err := GetPubKey(pub)
-	if err != nil {
-		log.Println("转换公钥失败:", err)
-	}
+	privKey := GetPrivKey(priv)
+
+	pubKey := GetPubKey(pub)
+
 	s := &SignerAndVerifier{
 		privKey: privKey,
 		pubKey:  pubKey,
@@ -133,4 +140,8 @@ func (s *SignerAndVerifier) Verify(msg []byte, sig []byte) bool {
 
 func (s *SignerAndVerifier) ThreshVerify(msg []byte, sig []byte, pubKey kyber.Point) bool {
 	return Verify(msg, sig, pubKey)
+}
+
+func (s *SignerAndVerifier) ThresholdSign(msg []byte, SigMap map[kyber.Point][]byte) ([]byte, kyber.Point, error) {
+	return ThresholdSign(msg, SigMap)
 }

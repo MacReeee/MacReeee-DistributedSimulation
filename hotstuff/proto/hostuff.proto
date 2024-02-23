@@ -7,7 +7,9 @@ import "hotstuff/proto/enums.proto";
 
 service hotstuff {
     rpc Propose(Proposal) returns (google.protobuf.Empty);
-    rpc Vote(VoteRequest) returns (google.protobuf.Empty);
+    rpc VotePrepare(VoteRequest) returns (google.protobuf.Empty);
+    rpc VotePreCommit(VoteRequest) returns (google.protobuf.Empty);
+    rpc VoteCommit(VoteRequest) returns (google.protobuf.Empty);
     rpc PreCommit(Precommit) returns (google.protobuf.Empty);
     rpc Commit(CommitMsg) returns (google.protobuf.Empty);
     rpc Decide(DecideMsg) returns (google.protobuf.Empty);

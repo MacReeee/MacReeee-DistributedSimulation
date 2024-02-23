@@ -2,6 +2,8 @@ package hotstuff
 
 import (
 	"distributed/hotstuff/pb"
+
+	"go.dedis.ch/kyber/v3"
 )
 
 var (
@@ -64,4 +66,23 @@ var KeyPairs = []KeyPair{
 		PublicKey:  "GcLGIftBwwVmazTXCl6sWx25xMgD0ozIk50q8IS308FNvFhnQnMWpP4VRAp3xKyxhfg0VsU5O/ncxTH+nUNZNX29HP9Lclvx8Z2OjXlwBZiu2pJ8cG/MPbSHUtsELUD+jbO8aNy5GXbXfCjLUM8lP8kpd2lyTDwcCzRwmIXaoUY=",
 		PrivateKey: "O671m2q7jluBEW+u4DKrNaWuwSa8uSmHrCul+2X6cyI=",
 	},
+}
+
+type Replica struct {
+	// 副本的ID。
+	ID uint32
+	// 副本的公钥。
+	PublicKey kyber.Point
+}
+
+type Replicas struct {
+	REPS    []*Replica
+	REPSMap map[uint32]*Replica
+}
+
+func NewReplicas() *Replicas {
+	return &Replicas{
+		REPS:    make([]*Replica, 0),
+		REPSMap: make(map[uint32]*Replica),
+	}
 }

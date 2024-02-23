@@ -20,13 +20,15 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Hotstuff_Propose_FullMethodName   = "/pb.hotstuff/Propose"
-	Hotstuff_Vote_FullMethodName      = "/pb.hotstuff/Vote"
-	Hotstuff_PreCommit_FullMethodName = "/pb.hotstuff/PreCommit"
-	Hotstuff_Commit_FullMethodName    = "/pb.hotstuff/Commit"
-	Hotstuff_Decide_FullMethodName    = "/pb.hotstuff/Decide"
-	Hotstuff_NewView_FullMethodName   = "/pb.hotstuff/NewView"
-	Hotstuff_Timeout_FullMethodName   = "/pb.hotstuff/Timeout"
+	Hotstuff_Propose_FullMethodName       = "/pb.hotstuff/Propose"
+	Hotstuff_VotePrepare_FullMethodName   = "/pb.hotstuff/VotePrepare"
+	Hotstuff_VotePreCommit_FullMethodName = "/pb.hotstuff/VotePreCommit"
+	Hotstuff_VoteCommit_FullMethodName    = "/pb.hotstuff/VoteCommit"
+	Hotstuff_PreCommit_FullMethodName     = "/pb.hotstuff/PreCommit"
+	Hotstuff_Commit_FullMethodName        = "/pb.hotstuff/Commit"
+	Hotstuff_Decide_FullMethodName        = "/pb.hotstuff/Decide"
+	Hotstuff_NewView_FullMethodName       = "/pb.hotstuff/NewView"
+	Hotstuff_Timeout_FullMethodName       = "/pb.hotstuff/Timeout"
 )
 
 // HotstuffClient is the client API for Hotstuff service.
@@ -34,7 +36,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type HotstuffClient interface {
 	Propose(ctx context.Context, in *Proposal, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	Vote(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	VotePrepare(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	VotePreCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	VoteCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	PreCommit(ctx context.Context, in *Precommit, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Commit(ctx context.Context, in *CommitMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Decide(ctx context.Context, in *DecideMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -59,9 +63,27 @@ func (c *hotstuffClient) Propose(ctx context.Context, in *Proposal, opts ...grpc
 	return out, nil
 }
 
-func (c *hotstuffClient) Vote(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *hotstuffClient) VotePrepare(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Hotstuff_Vote_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Hotstuff_VotePrepare_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hotstuffClient) VotePreCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Hotstuff_VotePreCommit_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hotstuffClient) VoteCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Hotstuff_VoteCommit_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +140,9 @@ func (c *hotstuffClient) Timeout(ctx context.Context, in *TimeoutMsg, opts ...gr
 // for forward compatibility
 type HotstuffServer interface {
 	Propose(context.Context, *Proposal) (*emptypb.Empty, error)
-	Vote(context.Context, *VoteRequest) (*emptypb.Empty, error)
+	VotePrepare(context.Context, *VoteRequest) (*emptypb.Empty, error)
+	VotePreCommit(context.Context, *VoteRequest) (*emptypb.Empty, error)
+	VoteCommit(context.Context, *VoteRequest) (*emptypb.Empty, error)
 	PreCommit(context.Context, *Precommit) (*emptypb.Empty, error)
 	Commit(context.Context, *CommitMsg) (*emptypb.Empty, error)
 	Decide(context.Context, *DecideMsg) (*emptypb.Empty, error)
@@ -134,8 +158,14 @@ type UnimplementedHotstuffServer struct {
 func (UnimplementedHotstuffServer) Propose(context.Context, *Proposal) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Propose not implemented")
 }
-func (UnimplementedHotstuffServer) Vote(context.Context, *VoteRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Vote not implemented")
+func (UnimplementedHotstuffServer) VotePrepare(context.Context, *VoteRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VotePrepare not implemented")
+}
+func (UnimplementedHotstuffServer) VotePreCommit(context.Context, *VoteRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VotePreCommit not implemented")
+}
+func (UnimplementedHotstuffServer) VoteCommit(context.Context, *VoteRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VoteCommit not implemented")
 }
 func (UnimplementedHotstuffServer) PreCommit(context.Context, *Precommit) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PreCommit not implemented")
@@ -183,20 +213,56 @@ func _Hotstuff_Propose_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Hotstuff_Vote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Hotstuff_VotePrepare_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(VoteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(HotstuffServer).Vote(ctx, in)
+		return srv.(HotstuffServer).VotePrepare(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Hotstuff_Vote_FullMethodName,
+		FullMethod: Hotstuff_VotePrepare_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HotstuffServer).Vote(ctx, req.(*VoteRequest))
+		return srv.(HotstuffServer).VotePrepare(ctx, req.(*VoteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Hotstuff_VotePreCommit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VoteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HotstuffServer).VotePreCommit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Hotstuff_VotePreCommit_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HotstuffServer).VotePreCommit(ctx, req.(*VoteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Hotstuff_VoteCommit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VoteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HotstuffServer).VoteCommit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Hotstuff_VoteCommit_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HotstuffServer).VoteCommit(ctx, req.(*VoteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -303,8 +369,16 @@ var Hotstuff_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Hotstuff_Propose_Handler,
 		},
 		{
-			MethodName: "Vote",
-			Handler:    _Hotstuff_Vote_Handler,
+			MethodName: "VotePrepare",
+			Handler:    _Hotstuff_VotePrepare_Handler,
+		},
+		{
+			MethodName: "VotePreCommit",
+			Handler:    _Hotstuff_VotePreCommit_Handler,
+		},
+		{
+			MethodName: "VoteCommit",
+			Handler:    _Hotstuff_VoteCommit_Handler,
 		},
 		{
 			MethodName: "PreCommit",

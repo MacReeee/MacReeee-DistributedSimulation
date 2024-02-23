@@ -18,6 +18,7 @@ type Synchronizer interface {
 type Crypto interface {
 	PartSign(msg []byte) ([]byte, error)
 	Sign(msg []byte) ([]byte, error)
+	ThresholdSign(msg []byte, SigMap map[kyber.Point][]byte) ([]byte, kyber.Point, error)
 	ThreshVerify(msg []byte, sig []byte, pubKey kyber.Point) bool
 	Verify(msg []byte, sig []byte) bool
 }
@@ -27,5 +28,6 @@ type Chain interface {
 	GetBlock(hash []byte) *pb.Block
 	PruneBlock(block *pb.Block, NewestChild *pb.Block) []string
 	Store(block *pb.Block)
-	StoreTemp(block *pb.Block)
+	StoreToTemp(block *pb.Block)
+	GetBlockFromTemp(hash []byte) *pb.Block
 }

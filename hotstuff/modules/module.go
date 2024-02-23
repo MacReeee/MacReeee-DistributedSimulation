@@ -13,6 +13,7 @@ type modules struct {
 	SignerAndVerifier middleware.Crypto
 	ReplicaServer     *grpc.Server
 	ReplicaClient     map[int32]*pb.HotstuffClient
+	// ReplicaPubKey     map[int32]kyber.Point
 }
 
 var MODULES = &modules{}
