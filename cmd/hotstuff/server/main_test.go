@@ -173,7 +173,7 @@ func Example() {
 		panic(fmt.Sprintf("%v", err))
 	}
 	fmt.Println("ok")
-	// Output: ok
+	// Output: ok1
 }
 
 func Test_Main(t *testing.T) {
