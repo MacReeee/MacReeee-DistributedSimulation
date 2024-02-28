@@ -175,3 +175,7 @@ func Example() {
 	fmt.Println("ok")
 	// Output: ok
 }
+
+func Test_Main(t *testing.T) {
+	// client := hotstuff.NewReplicaClient(1)
+}
