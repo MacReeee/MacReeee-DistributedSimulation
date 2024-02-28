@@ -38,6 +38,38 @@ type ReplicaServer struct {
 	pb.UnimplementedHotstuffServer
 }
 
+func NewReplicaServer(id int32) *grpc.Server {
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", id+4000))
+	if err != nil {
+		log.Println("副本服务监听失败:", err)
+	}
+	server := grpc.NewServer()
+	pb.RegisterHotstuffServer(server, &ReplicaServer{
+		threshold: 1,
+		count:     0,
+		wg:        stsync.WaitGroup{},
+		once:      stsync.Once{},
+	})
+	log.Println("副本服务启动成功")
+	server.Serve(listener)
+	modules.MODULES.ReplicaServer = server
+	return server
+}
+
+func NewReplicaClient(id int32) *pb.HotstuffClient {
+	conn, err := grpc.Dial(fmt.Sprintf(":%d", id+4000), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Println("副本客户端连接失败:", err)
+		return nil
+	}
+	defer conn.Close()
+	log.Println("副本客户端连接成功")
+	client := pb.NewHotstuffClient(conn)
+	modules.MODULES.ReplicaClient[id] = &client
+	// modules.MODULES.ReplicaPubKey[id] = cryp.GetPubKey()
+	return &client
+}
+
 // 这是收到NewView消息后的处理，开启新视图
 func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) (*emptypb.Empty, error) {
 	viewNum := sync.ViewNumber()
@@ -387,38 +419,6 @@ func NextView(s *ReplicaServer) { //所有的wait for阶段如果超时，都会
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-}
-
-func NewReplicaServer(id int32) *grpc.Server {
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", ReplicaID+4000))
-	if err != nil {
-		log.Println("副本服务监听失败:", err)
-	}
-	server := grpc.NewServer()
-	pb.RegisterHotstuffServer(server, &ReplicaServer{
-		threshold: 3,
-		count:     0,
-		wg:        stsync.WaitGroup{},
-		once:      stsync.Once{},
-	})
-	log.Println("副本服务启动成功")
-	server.Serve(listener)
-	modules.MODULES.ReplicaServer = server
-	return server
-}
-
-func NewReplicaClient(id int32) *pb.HotstuffClient {
-	conn, err := grpc.Dial(fmt.Sprintf(":%d", id+4000), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Println("副本客户端连接失败:", err)
-		return nil
-	}
-	defer conn.Close()
-	log.Println("副本客户端连接成功")
-	client := pb.NewHotstuffClient(conn)
-	modules.MODULES.ReplicaClient[id] = &client
-	// modules.MODULES.ReplicaPubKey[id] = cryp.GetPubKey()
-	return &client
 }
 
 //如果连续失败多个视图，如何保障节点之间的视图对齐？
