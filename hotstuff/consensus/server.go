@@ -344,7 +344,7 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*e
 		return nil, fmt.Errorf("decide msg type is not DECIDE")
 	}
 	sync.TimerReset() //重置计时器
-	sig, err := cryp.Sign(pb.MsgType_DECIDE, viewNum, DecideMsg.Hash)
+	sig, err := cryp.Sign(pb.MsgType_NEW_VIEW, viewNum, DecideMsg.Hash)
 	if err != nil {
 		log.Println("部分签名失败")
 	}
@@ -365,6 +365,28 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*e
 	// leader.NewView(sync.GetContext(), NewViewMsg)
 	leader.NewView(context.Background(), NewViewMsg)
 	return &emptypb.Empty{}, nil
+}
+
+func NextView(s *ReplicaServer) { //所有的wait for阶段如果超时，都会调用这个函数，//todo 记得go调用
+	for {
+		select {
+		case <-sync.Timeout():
+			var QC = s.PrepareQC
+			//对QC签名作为自己的签名
+			qcjson := QCMarshal(QC)
+			sig, _ := cryp.NormSign(qcjson)
+			leader := *modules.MODULES.ReplicaClient[sync.GetLeader()]
+			NewViewMsg := &pb.NewViewMsg{
+				Id:         s.ID,
+				MsgType:    pb.MsgType_NEW_VIEW,
+				ViewNumber: sync.ViewNumber(),
+				Qc:         QC,
+				Signature:  sig, //todo应当对QC进行签名，暂时省略
+			}
+			leader.NewView(context.Background(), NewViewMsg)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 func NewReplicaServer(id int32) *grpc.Server {
@@ -388,7 +410,7 @@ func NewReplicaServer(id int32) *grpc.Server {
 func NewReplicaClient(id int32) *pb.HotstuffClient {
 	conn, err := grpc.Dial(fmt.Sprintf(":%d", id+4000), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Println("副本客户端连s接失败:", err)
+		log.Println("副本客户端连接失败:", err)
 		return nil
 	}
 	defer conn.Close()
@@ -397,25 +419,6 @@ func NewReplicaClient(id int32) *pb.HotstuffClient {
 	modules.MODULES.ReplicaClient[id] = &client
 	// modules.MODULES.ReplicaPubKey[id] = cryp.GetPubKey()
 	return &client
-}
-
-// todo 超时之后重置：once 计时器
-func NextView(s *ReplicaServer) { //所有的wait for阶段如果超时，都会调用这个函数，//todo 记得go调用
-	for {
-		select {
-		case <-sync.Timeout():
-			leader := *modules.MODULES.ReplicaClient[sync.GetLeader()]
-			NewViewMsg := &pb.NewViewMsg{
-				Id:         s.ID,
-				MsgType:    pb.MsgType_NEW_VIEW,
-				ViewNumber: sync.ViewNumber(),
-				Qc:         s.PrepareQC,
-				Signature:  nil, //todo应当对QC进行签名，暂时省略
-			}
-			leader.NewView(context.Background(), NewViewMsg)
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
 }
 
 //如果连续失败多个视图，如何保障节点之间的视图对齐？
