@@ -1,6 +1,11 @@
 package hotstuff
 
-import "distributed/hotstuff/pb"
+import (
+	"distributed/hotstuff/middleware"
+	"distributed/hotstuff/pb"
+	"encoding/json"
+	"log"
+)
 
 func MatchingMsg(Type pb.MsgType, ViewNumber int64, TarType pb.MsgType, TarviewNumber int64) bool {
 	return Type == TarType && ViewNumber == TarviewNumber
@@ -14,4 +19,17 @@ func SafeNode(block *pb.Block, qc *pb.QC) bool {
 
 func Sign(msg []byte) []byte {
 	return nil
+}
+
+func ViewSuccess(sync middleware.Synchronizer) {
+	_, success := sync.GetContext()
+	success()
+}
+
+func QCMarshal(qc *pb.QC) []byte {
+	qcjson, err := json.Marshal(qc)
+	if err != nil {
+		log.Println("json序列化失败:", err)
+	}
+	return qcjson
 }

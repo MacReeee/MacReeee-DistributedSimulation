@@ -3,7 +3,7 @@ option go_package="./pb";
 package pb;
 
 import "google/protobuf/empty.proto";
-import "hotstuff/proto/enums.proto";
+import "hotstuff/pb/proto/enums.proto";
 
 service hotstuff {
     rpc Propose(Proposal) returns (google.protobuf.Empty);
@@ -87,9 +87,11 @@ message Block {
 
 message QC {
     bytes bls_signature = 1; //提案阶段是对区块的hash进行签名的聚合，后续阶段是对QC进行签名的聚合，即QC的QC
-    MsgType msg_type = 2;
-    int64 view_number = 3;
-    bytes blockHash = 4;
+    bytes AggPubKey = 2;
+    repeated int32 voter = 3;
+    MsgType msg_type = 4;
+    int64 view_number = 5;
+    bytes blockHash = 6;
 }
 
 message aggQC {

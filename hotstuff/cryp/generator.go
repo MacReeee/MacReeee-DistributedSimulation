@@ -1,4 +1,4 @@
-package crypto
+package cryp
 
 import (
 	"encoding/json"

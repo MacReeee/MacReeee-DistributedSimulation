@@ -8,11 +8,15 @@ import (
 )
 
 type modules struct {
-	Chain             middleware.Chain
-	Synchronizer      middleware.Synchronizer
+	Chain         middleware.Chain
+	Synchronizer  middleware.Synchronizer
+	Signer        middleware.CRYP
+	ReplicaServer *grpc.Server
+	ReplicaClient map[int32]*pb.HotstuffClient
+
+	// Deprecated: Use CRYP instead
 	SignerAndVerifier middleware.Crypto
-	ReplicaServer     *grpc.Server
-	ReplicaClient     map[int32]*pb.HotstuffClient
+
 	// ReplicaPubKey     map[int32]kyber.Point
 }
 

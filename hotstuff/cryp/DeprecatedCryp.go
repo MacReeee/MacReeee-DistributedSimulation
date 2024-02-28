@@ -1,4 +1,4 @@
-package crypto
+package cryp
 
 import (
 	"distributed/hotstuff/modules"
@@ -7,14 +7,11 @@ import (
 	"log"
 
 	"go.dedis.ch/kyber/v3"
-	"go.dedis.ch/kyber/v3/pairing"
 	"go.dedis.ch/kyber/v3/sign"
 	"go.dedis.ch/kyber/v3/sign/bdn"
 )
 
-var suite = pairing.NewSuiteBn256()
-
-// todo: 初始化时存储所有的公钥
+// 初始化时存储所有的公钥
 var ALL_PUBLIC_KEYS = []kyber.Point{
 	GetPubKey([]byte("T4EXVUEVDV+FdrC7EKqIp932R47XWkf6AKKEbhV6fqWFusIVi4gsUxnNNDBvSoO/+ckKXWQJ2ewklcTLJvWdQFl9hfkqQ/L/tezCpDZTxN8Hj4aRICXTw9rDHCDGjK/MRpDr6V7Xfz9K/LnYKZV0hhg3/GibzbGyunfImMC4n0s=")),
 	GetPubKey([]byte("gpS8ARul05I5VV+qQR9s+ls4VwiWs2yCYJ2zB3AwHqFxuPttDqE6ZOpvpIru27P7zoXpPu4xyS3s/V5/Wi4Vam4ohGfud0ThKyyXObS53ATBGx1LgRU64dbx6FyrtO5MAkvzBsXR2Yl/VQ88IkGdumNkuZwpWRLEoeRVjeyinng=")),
