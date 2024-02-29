@@ -77,6 +77,7 @@ func (s *Signer) NormSign(msg []byte) ([]byte, error) {
 	return bdn.Sign(suite, s.PrivateKey, msg)
 }
 
+//传入顺序：投票者，消息，签名
 func (s *Signer) Verify(voter int32, msg []byte, sig []byte) bool {
 	publicKey := suite.G2().Point()
 	pk_bin, err := hex.DecodeString(pks[voter-1])

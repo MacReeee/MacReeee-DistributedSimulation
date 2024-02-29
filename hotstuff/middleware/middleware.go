@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"distributed/hotstuff/pb"
+	"sync"
 
 	"go.dedis.ch/kyber/v3"
 )
@@ -18,9 +19,12 @@ type Synchronizer interface {
 	ViewNumber() int64
 	Timeout() <-chan bool
 	StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, NewViewMsg ...*pb.NewViewMsg)
-	GetVoter(msgType pb.MsgType) ([]int32, [][]byte)
+	GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *sync.Once) // 返回投票者、投票信息、对应的once
 	HighQC() *pb.QC
 	QC(msgType pb.MsgType) *pb.QC //合成一个QC
+
+	//Debug
+	Debug()
 }
 
 type Chain interface {

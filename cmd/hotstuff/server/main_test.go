@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/sha256"
 	"distributed/hotstuff/blockchain"
 	hotstuff "distributed/hotstuff/consensus"
 	"distributed/hotstuff/cryp"
 	"distributed/hotstuff/modules"
+	"distributed/hotstuff/pb"
 	"distributed/hotstuff/view"
 	"fmt"
+	"log"
 	"testing"
 
 	stcryp "crypto"
@@ -176,6 +179,115 @@ func Example() {
 	// Output: ok12
 }
 
-func Test_Main(t *testing.T) {
-	// client := hotstuff.NewReplicaClient(1)
+func Test_Debug(t *testing.T) {
+	client := *hotstuff.NewReplicaClient(1)
+	client.Debug(context.Background(), &pb.DebugMsg{})
+}
+
+func Test_NewView(t *testing.T) {
+	client := *hotstuff.NewReplicaClient(1)
+	signer2 := cryp.NewSignerByID(2)
+	var QC = GetValidQC(pb.MsgType_NEW_VIEW)
+	qcjson := hotstuff.QCMarshal(QC)
+	sig, _ := signer2.NormSign(qcjson)
+	NewViewMsg := &pb.NewViewMsg{
+		Id:         2,
+		MsgType:    pb.MsgType_NEW_VIEW,
+		ViewNumber: 1,
+		Qc:         QC,
+		Signature:  sig, //todo应当对QC进行签名，暂时省略1
+	}
+	_, err := client.NewView(context.Background(), NewViewMsg)
+	log.Println(err)
+}
+
+func Test_Server(t *testing.T) {
+	client := *hotstuff.NewReplicaClient(1)
+	signer2 := cryp.NewSignerByID(2)
+	var QC = GetValidQC(pb.MsgType_NEW_VIEW)
+	qcjson := hotstuff.QCMarshal(QC)
+	sig, _ := signer2.NormSign(qcjson)
+	NewViewMsg := &pb.NewViewMsg{
+		Id:         2,
+		MsgType:    pb.MsgType_NEW_VIEW,
+		ViewNumber: 1,
+		Qc:         QC,
+		Signature:  sig, //todo应当对QC进行签名，暂时省略123
+	}
+	Proposal, err := client.NewView(context.Background(), NewViewMsg)
+	ProposalMsg := &pb.Proposal{
+		Block: Proposal.GetBlock(),
+		Qc:    Proposal.Block.GetQc(),
+		// Aggqc:      nil,
+		// ProposalId: 0,
+		Proposer:   Proposal.GetProposer(),
+		ViewNumber: Proposal.GetViewNumber(),
+		Signature:  Proposal.GetSignature(),
+		// Timestamp:  0,
+		MsgType: Proposal.GetMsgType(),
+	}
+	log.Println("NewView错误: ", err)
+	// fmt.Println(ProposalMsg)
+
+	PrepareVoteMsg, err := client.Propose(context.Background(), ProposalMsg)
+	log.Println("Propose错误: ", err)
+	// log.Println("消息格式：", Proposal.GetMsgType())
+	// log.Println(PrepareVoteMsg)
+	// time.Sleep(1 * time.Second)
+
+	PreCommitMsg, err := client.VotePrepare(context.Background(), PrepareVoteMsg)
+	log.Println("VotePrepare错误: ", err)
+	// log.Println(PreCommitMsg.Signature)
+	/*----------------------- 以上步骤测试完毕 -----------------------*/
+
+	client.PreCommit(context.Background(), PreCommitMsg)
+}
+
+func GetValidQC(msgType pb.MsgType) *pb.QC {
+	signer1 := cryp.NewSignerByID(1)
+	signer2 := cryp.NewSignerByID(2)
+	signer3 := cryp.NewSignerByID(3)
+	signer4 := cryp.NewSignerByID(4)
+
+	// var signMsg = []byte(fmt.Sprintf("%d,%d,%x", pb.MsgType_PREPARE, 2, []byte("hashhash")))
+
+	signature1, _ := signer1.Sign(msgType, 1, []byte("FFFFFFFFFFFF"))
+	signature2, _ := signer2.Sign(msgType, 1, []byte("FFFFFFFFFFFF"))
+	signature3, _ := signer3.Sign(msgType, 1, []byte("FFFFFFFFFFFF"))
+	signature4, _ := signer4.Sign(msgType, 1, []byte("FFFFFFFFFFFF"))
+
+	aggsig, aggpub, _ := signer2.ThreshMock([]int32{1, 2, 3, 4}, [][]byte{signature1, signature2, signature3, signature4})
+
+	var QC = &pb.QC{
+		BlsSignature: aggsig,
+		AggPubKey:    aggpub,
+		Voter:        []int32{1, 2, 3, 4},
+		MsgType:      msgType,
+		ViewNumber:   1,
+		BlockHash:    []byte("FFFFFFFFFFFF"),
+	}
+	return QC
+}
+
+func CreatePreCommitTestInput() *pb.Precommit {
+
+	signer2 := cryp.NewSignerByID(2)
+
+	sig, _ := signer2.Sign(pb.MsgType_PRE_COMMIT, 2, []byte("FFFFFFFFFFFF"))
+
+	var PreCommitMsg = &pb.Precommit{
+		Id:         2,
+		MsgType:    pb.MsgType_PRE_COMMIT,
+		ViewNumber: 2,
+		Qc:         GetValidQC(pb.MsgType_PRE_COMMIT),
+		Signature:  sig,
+	}
+	return PreCommitMsg
+}
+
+func Test_PreCommit(t *testing.T) {
+	client := *hotstuff.NewReplicaClient(1)
+	PreCommitMsg := CreatePreCommitTestInput()
+	_, err := client.PreCommit(context.Background(), PreCommitMsg)
+	log.Println(err)
 }

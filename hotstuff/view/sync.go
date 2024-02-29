@@ -15,6 +15,14 @@ var (
 	MAX_Timeout  = 2 * time.Second        //最大超时时间
 )
 
+// /* ------- debug mode ------- */
+// var (
+// 	BASE_Timeout = 500 * time.Second  //基础超时时间
+// 	MAX_Timeout  = 2000 * time.Second //最大超时时间
+// )
+
+// /* ----- debug mode end ----- */
+
 // 仅计时相关以及视图切换，不参与共识过程
 type Synchronize struct {
 	mu          sync.Mutex
@@ -34,9 +42,9 @@ func New() *Synchronize {
 	Synchronizer := &Synchronize{
 		CurrentView: 1,
 		// HighQC:      nil,
-		HighTC:      nil,
+		// HighTC:      nil,
 		duration:    viewDuration,
-		timer:       nil, //暂时用不到
+		timer:       time.NewTimer(1000 * time.Second),
 		timeouts:    make(map[int64]map[int32]*pb.TimeoutMsg),
 		TimeoutChan: make(chan bool, 1),
 	}
@@ -45,9 +53,10 @@ func New() *Synchronize {
 }
 
 func (s *Synchronize) StartTimeOutTimer(ctx_timeout context.Context, timeout context.CancelFunc) {
+	s.timer = time.NewTimer(s.duration.Duration())
 	select {
 	//////////////////////////////////////////////////////////////////////////超时逻辑
-	case <-time.After(s.duration.Duration()):
+	case <-s.timer.C:
 		if ctx_timeout.Err() == nil {
 			timeout() //停止正常退出逻辑
 			s.duration.ViewTimeout(s)
@@ -118,8 +127,9 @@ func (s *Synchronize) StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, N
 	}
 }
 
-func (s *Synchronize) GetVoter(msgType pb.MsgType) ([]int32, [][]byte) {
-	return s.duration.GetVoter(msgType)
+func (s *Synchronize) GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *sync.Once) {
+	voter, sigs := s.duration.GetVoter(msgType)
+	return voter, sigs, s.duration.GetOnce(msgType)
 }
 
 func (s *Synchronize) HighQC() *pb.QC {
@@ -134,6 +144,16 @@ func (s *Synchronize) QC(msgType pb.MsgType) *pb.QC {
 
 func (s *Synchronize) Vote() *vote {
 	return s.duration.vote()
+}
+
+func (s *Synchronize) Debug() {
+	var (
+		sync = modules.MODULES.Synchronizer
+		// cryp  = modules.MODULES.SignerAndVerifier
+		cryp  = modules.MODULES.Signer
+		chain = modules.MODULES.Chain
+	)
+	log.Println("同步模块debug info: ", sync, cryp, chain)
 }
 
 /* -----utils functions end----- */

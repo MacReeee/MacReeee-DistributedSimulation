@@ -2,19 +2,25 @@ package hotstuff
 
 import (
 	"distributed/hotstuff/middleware"
+	"distributed/hotstuff/modules"
 	"distributed/hotstuff/pb"
 	"encoding/json"
+	"fmt"
 	"log"
+	"time"
 )
 
-func MatchingMsg(Type pb.MsgType, ViewNumber int64, TarType pb.MsgType, TarviewNumber int64) bool {
-	return Type == TarType && ViewNumber == TarviewNumber
-}
-
-func SafeNode(block *pb.Block, qc *pb.QC) bool {
-	return (string(block.ParentHash) == string(qc.BlockHash)) && //检查是否是父区块的子区块
-		(string(block.ParentHash) == string(LockedQC.BlockHash) || //安全性
-			qc.ViewNumber > LockedQC.ViewNumber) //活性
+func MatchingMsg(Type pb.MsgType, ViewNumber int64, TarType pb.MsgType, TarviewNumber int64) (bool, error) {
+	condition1 := (Type == TarType)
+	if !condition1 {
+		return false, fmt.Errorf("消息类型不匹配")
+	}
+	condition2 := (ViewNumber == TarviewNumber)
+	if !condition2 {
+		return false, fmt.Errorf("视图号不匹配")
+	}
+	//log.Println("MatchingMsg:", condition1, condition2)
+	return condition1 && condition2, nil
 }
 
 func Sign(msg []byte) []byte {
@@ -32,4 +38,18 @@ func QCMarshal(qc *pb.QC) []byte {
 		log.Println("json序列化失败:", err)
 	}
 	return qcjson
+}
+
+func Debug_Period_Out() {
+	var (
+		sync = modules.MODULES.Synchronizer
+		//cryp  = modules.MODULES.Signer
+		//chain = modules.MODULES.Chain
+	)
+	for {
+		log.Println("当前视图: ", sync.ViewNumber())
+
+		time.Sleep(10 * time.Second)
+		fmt.Printf("\n\n")
+	}
 }

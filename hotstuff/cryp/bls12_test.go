@@ -306,3 +306,139 @@ func Test_ThreshAndVerifyMock(t *testing.T) {
 
 	fmt.Println(signer3.ThreshVerifyMock(&TestQC))
 }
+
+func Test_GetPrepareQCSigs(t *testing.T) {
+	signer1 := NewSignerByID(1)
+	signer2 := NewSignerByID(2)
+	signer3 := NewSignerByID(3)
+	signer4 := NewSignerByID(4)
+
+	var VoteMsg1 = pb.VoteRequest{
+		Voter:      1,
+		MsgType:    pb.MsgType_PREPARE_VOTE,
+		ViewNumber: 0,
+		Hash:       []byte("FFFFFFFFFFFF"),
+	}
+	var VoteMsg2 = pb.VoteRequest{
+		Voter:      2,
+		MsgType:    pb.MsgType_PREPARE_VOTE,
+		ViewNumber: 0,
+		Hash:       []byte("FFFFFFFFFFFF"),
+	}
+	var VoteMsg3 = pb.VoteRequest{
+		Voter:      3,
+		MsgType:    pb.MsgType_PREPARE_VOTE,
+		ViewNumber: 0,
+		Hash:       []byte("FFFFFFFFFFFF"),
+	}
+	var VoteMsg4 = pb.VoteRequest{
+		Voter:      4,
+		MsgType:    pb.MsgType_PREPARE_VOTE,
+		ViewNumber: 0,
+		Hash:       []byte("FFFFFFFFFFFF"),
+	}
+
+	PartSign1, _ := signer1.Sign(VoteMsg1.MsgType, VoteMsg1.ViewNumber, VoteMsg1.Hash)
+	PartSign2, _ := signer2.Sign(VoteMsg2.MsgType, VoteMsg2.ViewNumber, VoteMsg2.Hash)
+	PartSign3, _ := signer3.Sign(VoteMsg3.MsgType, VoteMsg3.ViewNumber, VoteMsg3.Hash)
+	PartSign4, _ := signer4.Sign(VoteMsg4.MsgType, VoteMsg4.ViewNumber, VoteMsg4.Hash)
+
+	signer2.ThreshMock([]int32{1, 2, 3, 4}, [][]byte{PartSign1, PartSign2, PartSign3, PartSign4})
+	var TestQC = pb.QC{
+		MsgType:      pb.MsgType_PREPARE_VOTE,
+		BlsSignature: []byte{28, 201, 16, 247, 213, 76, 151, 58, 250, 236, 79, 128, 122, 208, 217, 160, 143, 88, 54, 100, 139, 163, 76, 61, 181, 63, 167, 129, 66, 245, 88, 25, 21, 227, 11, 228, 66, 141, 175, 202, 151, 51, 11, 128, 65, 198, 218, 133, 123, 164, 170, 45, 207, 25, 255, 78, 238, 39, 217, 167, 127, 128, 89, 139},
+		AggPubKey:    []byte{117, 17, 230, 255, 170, 193, 55, 5, 104, 254, 206, 140, 207, 13, 157, 251, 133, 127, 45, 101, 201, 13, 104, 232, 86, 99, 251, 120, 113, 181, 236, 203, 70, 82, 146, 114, 242, 245, 4, 11, 211, 137, 204, 26, 203, 162, 239, 53, 243, 152, 103, 109, 92, 66, 136, 231, 15, 124, 233, 177, 118, 254, 203, 130, 92, 210, 35, 180, 213, 26, 215, 163, 131, 111, 55, 119, 137, 211, 176, 127, 113, 180, 169, 35, 14, 211, 188, 213, 131, 150, 197, 222, 81, 79, 34, 226, 86, 112, 162, 123, 244, 203, 105, 228, 102, 225, 87, 44, 143, 133, 131, 146, 201, 123, 173, 133, 70, 157, 160, 103, 241, 161, 127, 114, 201, 70, 247, 75},
+		BlockHash:    []byte("FFFFFFFFFFFF"),
+		ViewNumber:   0,
+	}
+
+	fmt.Println(signer3.ThreshVerifyMock(&TestQC))
+	// fmt.Println("sig: ")
+	// for _, v := range TestQC.BlsSignature {
+	// 	fmt.Print(v, ",")
+	// }
+	// fmt.Println("pub: ")
+	// for _, v := range TestQC.AggPubKey {
+	// 	fmt.Print(v, ",")
+	// }
+	// 将 ThreshSign, aggpub 转换成16进制字符串
+	// ThreshSignHex := hex.EncodeToString(ThreshSign)
+	// AggPubHex := hex.EncodeToString(aggpub)
+	// fmt.Println("ThreshSignHex: ", ThreshSignHex)
+	// fmt.Println("AggPubHex: ", AggPubHex)
+
+	// sig := []byte("1cc910f7d54c973afaec4f807ad0d9a08f5836648ba34c3db53fa78142f5581915e30be4428dafca97330b8041c6da857ba4aa2dcf19ff4eee27d9a77f80598b")
+	// msg := []byte(fmt.Sprintf("%d,%d,%x", pb.MsgType_PREPARE_VOTE, 0, []byte("FFFFFFFFFFFF")))
+	// var pk = suite.G2().Point()
+	// pk.UnmarshalBinary([]byte("7511e6ffaac1370568fece8ccf0d9dfb857f2d65c90d68e85663fb7871b5eccb46529272f2f5040bd389cc1acba2ef35f398676d5c4288e70f7ce9b176fecb825cd223b4d51ad7a3836f377789d3b07f71b4a9230ed3bcd58396c5de514f22e25670a27bf4cb69e466e1572c8f858392c97bad85469da067f1a17f72c946f74b"))
+
+	// fmt.Println(bdn.Verify(suite, pk, msg, sig) == nil)
+}
+
+func Test_GetLockedQCSigs(t *testing.T) {
+	signer1 := NewSignerByID(1)
+	signer2 := NewSignerByID(2)
+	signer3 := NewSignerByID(3)
+	signer4 := NewSignerByID(4)
+
+	var VoteMsg1 = pb.VoteRequest{
+		Voter:      1,
+		MsgType:    pb.MsgType_PRE_COMMIT_VOTE,
+		ViewNumber: 0,
+		Hash:       []byte("FFFFFFFFFFFF"),
+	}
+	var VoteMsg2 = pb.VoteRequest{
+		Voter:      2,
+		MsgType:    pb.MsgType_PRE_COMMIT_VOTE,
+		ViewNumber: 0,
+		Hash:       []byte("FFFFFFFFFFFF"),
+	}
+	var VoteMsg3 = pb.VoteRequest{
+		Voter:      3,
+		MsgType:    pb.MsgType_PRE_COMMIT_VOTE,
+		ViewNumber: 0,
+		Hash:       []byte("FFFFFFFFFFFF"),
+	}
+	var VoteMsg4 = pb.VoteRequest{
+		Voter:      4,
+		MsgType:    pb.MsgType_PRE_COMMIT_VOTE,
+		ViewNumber: 0,
+		Hash:       []byte("FFFFFFFFFFFF"),
+	}
+
+	PartSign1, _ := signer1.Sign(VoteMsg1.MsgType, VoteMsg1.ViewNumber, VoteMsg1.Hash)
+	PartSign2, _ := signer2.Sign(VoteMsg2.MsgType, VoteMsg2.ViewNumber, VoteMsg2.Hash)
+	PartSign3, _ := signer3.Sign(VoteMsg3.MsgType, VoteMsg3.ViewNumber, VoteMsg3.Hash)
+	PartSign4, _ := signer4.Sign(VoteMsg4.MsgType, VoteMsg4.ViewNumber, VoteMsg4.Hash)
+
+	signer2.ThreshMock([]int32{1, 2, 3, 4}, [][]byte{PartSign1, PartSign2, PartSign3, PartSign4})
+	var TestQC = pb.QC{
+		MsgType:      pb.MsgType_PRE_COMMIT_VOTE,
+		BlsSignature: []byte{56, 102, 243, 138, 71, 19, 119, 120, 28, 242, 150, 51, 203, 31, 93, 78, 112, 144, 141, 87, 48, 195, 12, 60, 15, 160, 155, 17, 48, 87, 131, 51, 39, 119, 159, 49, 183, 198, 110, 188, 38, 200, 189, 59, 237, 239, 28, 28, 91, 84, 231, 78, 5, 75, 141, 214, 29, 174, 5, 46, 32, 26, 68, 5},
+		AggPubKey:    []byte{117, 17, 230, 255, 170, 193, 55, 5, 104, 254, 206, 140, 207, 13, 157, 251, 133, 127, 45, 101, 201, 13, 104, 232, 86, 99, 251, 120, 113, 181, 236, 203, 70, 82, 146, 114, 242, 245, 4, 11, 211, 137, 204, 26, 203, 162, 239, 53, 243, 152, 103, 109, 92, 66, 136, 231, 15, 124, 233, 177, 118, 254, 203, 130, 92, 210, 35, 180, 213, 26, 215, 163, 131, 111, 55, 119, 137, 211, 176, 127, 113, 180, 169, 35, 14, 211, 188, 213, 131, 150, 197, 222, 81, 79, 34, 226, 86, 112, 162, 123, 244, 203, 105, 228, 102, 225, 87, 44, 143, 133, 131, 146, 201, 123, 173, 133, 70, 157, 160, 103, 241, 161, 127, 114, 201, 70, 247, 75},
+		BlockHash:    []byte("FFFFFFFFFFFF"),
+		ViewNumber:   0,
+	}
+
+	fmt.Println(signer3.ThreshVerifyMock(&TestQC))
+	// fmt.Println("sig: ")
+	// for _, v := range TestQC.BlsSignature {
+	// 	fmt.Print(v, ",")
+	// }
+	// fmt.Println("pub: ")
+	// for _, v := range TestQC.AggPubKey {
+	// 	fmt.Print(v, ",")
+	// }
+	// 将 ThreshSign, aggpub 转换成16进制字符串
+	// ThreshSignHex := hex.EncodeToString(ThreshSign)
+	// AggPubHex := hex.EncodeToString(aggpub)
+	// fmt.Println("ThreshSignHex: ", ThreshSignHex)
+	// fmt.Println("AggPubHex: ", AggPubHex)
+
+	// sig := []byte("1cc910f7d54c973afaec4f807ad0d9a08f5836648ba34c3db53fa78142f5581915e30be4428dafca97330b8041c6da857ba4aa2dcf19ff4eee27d9a77f80598b")
+	// msg := []byte(fmt.Sprintf("%d,%d,%x", pb.MsgType_PREPARE_VOTE, 0, []byte("FFFFFFFFFFFF")))
+	// var pk = suite.G2().Point()
+	// pk.UnmarshalBinary([]byte("7511e6ffaac1370568fece8ccf0d9dfb857f2d65c90d68e85663fb7871b5eccb46529272f2f5040bd389cc1acba2ef35f398676d5c4288e70f7ce9b176fecb825cd223b4d51ad7a3836f377789d3b07f71b4a9230ed3bcd58396c5de514f22e25670a27bf4cb69e466e1572c8f858392c97bad85469da067f1a17f72c946f74b"))
+
+	// fmt.Println(bdn.Verify(suite, pk, msg, sig) == nil)
+}

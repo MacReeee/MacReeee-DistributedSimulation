@@ -4,6 +4,7 @@ import (
 	"context"
 	"distributed/hotstuff/pb"
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -20,6 +21,7 @@ type ViewDuration interface {
 	CancelFunc()
 	vote() *vote
 	GetVoter(msgType pb.MsgType) ([]int32, [][]byte)
+	GetOnce(msgType pb.MsgType) *sync.Once
 	HighQC() *pb.QC
 	QC(msgType pb.MsgType) *pb.QC // 根据存储的投票合成一个QC
 }
@@ -45,7 +47,8 @@ type viewDuration struct {
 	ctx        context.Context
 	success    context.CancelFunc
 
-	Vote vote
+	Vote vote // 存储投票
+	once map[pb.MsgType]*sync.Once
 }
 
 // NewViewDuration 返回一个ViewDuration，它基于先前视图的持续时间来近似视图持续时间。
@@ -68,7 +71,13 @@ func NewViewDuration(maxTimeout, multiplier float64) ViewDuration {
 			PreCommitVoter: []int32{},
 			CommitVoter:    []int32{},
 		},
+		once: make(map[pb.MsgType]*sync.Once),
 	}
+	view.once[pb.MsgType_NEW_VIEW] = &sync.Once{}
+	view.once[pb.MsgType_PREPARE] = &sync.Once{}
+	view.once[pb.MsgType_PRE_COMMIT] = &sync.Once{}
+	view.once[pb.MsgType_COMMIT] = &sync.Once{}
+
 	view.ctx, view.success = context.WithCancel(ctx)
 	fmt.Println("viewDuration")
 	return view
@@ -144,6 +153,10 @@ func (v *viewDuration) GetVoter(msgType pb.MsgType) ([]int32, [][]byte) {
 		}
 	}
 	return nil, nil
+}
+
+func (v *viewDuration) GetOnce(msgType pb.MsgType) *sync.Once {
+	return v.once[msgType]
 }
 
 func (v *viewDuration) HighQC() *pb.QC {
