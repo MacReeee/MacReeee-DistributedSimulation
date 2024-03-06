@@ -3,7 +3,6 @@ package view
 import (
 	"context"
 	"distributed/hotstuff/pb"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -18,7 +17,7 @@ type ViewDuration interface {
 	GetContext() context.Context
 
 	/* -------导出类型------- */
-	CancelFunc()
+	SuccessFunc() context.CancelFunc
 	vote() *vote
 	GetVoter(msgType pb.MsgType) ([]int32, [][]byte)
 	GetOnce(msgType pb.MsgType) *sync.Once
@@ -44,8 +43,9 @@ type viewDuration struct {
 	startTime  time.Time // 当前测量的开始时间
 	max        float64   // 视图超时的上限
 	timeoutMul float64   // 在失败的视图上，将当前平均值乘以此数（应大于1）
-	ctx        context.Context
-	success    context.CancelFunc
+
+	ctx_success context.Context    //成功的ctx
+	success     context.CancelFunc //成功函数
 
 	Vote vote // 存储投票
 	once map[pb.MsgType]*sync.Once
@@ -74,17 +74,17 @@ func NewViewDuration(maxTimeout, multiplier float64) ViewDuration {
 		once: make(map[pb.MsgType]*sync.Once),
 	}
 	view.once[pb.MsgType_NEW_VIEW] = &sync.Once{}
-	view.once[pb.MsgType_PREPARE] = &sync.Once{}
-	view.once[pb.MsgType_PRE_COMMIT] = &sync.Once{}
-	view.once[pb.MsgType_COMMIT] = &sync.Once{}
+	view.once[pb.MsgType_PREPARE_VOTE] = &sync.Once{}
+	view.once[pb.MsgType_PRE_COMMIT_VOTE] = &sync.Once{} //debuging
+	view.once[pb.MsgType_COMMIT_VOTE] = &sync.Once{}     //debuging
 
-	view.ctx, view.success = context.WithCancel(ctx)
-	fmt.Println("viewDuration")
+	view.ctx_success, view.success = context.WithCancel(ctx)
+	// fmt.Println("viewDuration")
 	return view
 }
 
-func (v *viewDuration) CancelFunc() {
-	v.success()
+func (v *viewDuration) SuccessFunc() context.CancelFunc {
+	return v.success
 }
 
 // Duration 返回视图持续时间
@@ -105,7 +105,9 @@ func (v *viewDuration) ViewStarted() {
 // 并更新用于计算平均值和方差的内部值。
 func (v *viewDuration) ViewSucceeded(s *Synchronize) {
 	v.timeoutMul = 1
+	s.mu.Lock()
 	s.CurrentView++
+	s.mu.Unlock()
 	s.duration = NewViewDuration(v.max, v.timeoutMul)
 	s.Start(v.GetContext())
 }
@@ -113,13 +115,15 @@ func (v *viewDuration) ViewSucceeded(s *Synchronize) {
 // ViewTimeout 在视图超时时应调用。它将当前平均值乘以'mul'。
 func (v *viewDuration) ViewTimeout(s *Synchronize) {
 	v.timeoutMul *= 2
+	s.mu.Lock()
 	s.CurrentView++
+	s.mu.Unlock()
 	s.duration = NewViewDuration(v.max, v.timeoutMul)
 	s.Start(v.GetContext())
 }
 
 func (v *viewDuration) GetContext() context.Context {
-	return v.ctx
+	return v.ctx_success
 }
 
 func (v *viewDuration) vote() *vote {

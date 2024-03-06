@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
 	"distributed/hotstuff/blockchain"
@@ -10,6 +11,7 @@ import (
 	"distributed/hotstuff/modules"
 	"distributed/hotstuff/pb"
 	"distributed/hotstuff/view"
+	"encoding/json"
 	"fmt"
 	"log"
 	"testing"
@@ -179,11 +181,6 @@ func Example() {
 	// Output: ok12
 }
 
-func Test_Debug(t *testing.T) {
-	client := *hotstuff.NewReplicaClient(1)
-	client.Debug(context.Background(), &pb.DebugMsg{})
-}
-
 func Test_NewView(t *testing.T) {
 	client := *hotstuff.NewReplicaClient(1)
 	signer2 := cryp.NewSignerByID(2)
@@ -290,4 +287,83 @@ func Test_PreCommit(t *testing.T) {
 	PreCommitMsg := CreatePreCommitTestInput()
 	_, err := client.PreCommit(context.Background(), PreCommitMsg)
 	log.Println(err)
+}
+
+func Test_VotePreCommit(t *testing.T) {
+	signer2 := cryp.NewSignerByID(2)
+	sig, _ := signer2.Sign(pb.MsgType_PRE_COMMIT_VOTE, 1, []byte("FFFFFFFFFFFF"))
+	vote := pb.VoteRequest{
+		ViewNumber: 1,
+		MsgType:    pb.MsgType_PRE_COMMIT_VOTE,
+		Voter:      2,
+		Signature:  sig,
+		Hash:       []byte("FFFFFFFFFFFF"),
+	}
+	client1 := *hotstuff.NewReplicaClient(1)
+	CommitMsg, err := client1.VotePreCommit(context.Background(), &vote)
+	log.Println("测试VotePreCommit的错误信息如下: ", err)
+	log.Println("测试VotePreCommit的返回信息如下: ", CommitMsg)
+	// _, err = client1.Debug(context.Background(), &pb.DebugMsg{})
+	// fmt.Println(vote)
+}
+
+func Test_Commit(t *testing.T) {
+	signer2 := cryp.NewSignerByID(2)
+
+	QC := GetValidQC(pb.MsgType_COMMIT)
+	qcjson, _ := json.Marshal(QC)
+	sig, _ := signer2.NormSign(qcjson)
+
+	CommitMsg := &pb.CommitMsg{
+		Id:         2,
+		MsgType:    pb.MsgType_COMMIT,
+		ViewNumber: 1,
+		Qc:         QC,
+		Hash:       []byte("FFFFFFFFFFFF"),
+		Signature:  sig,
+	}
+
+	client1 := *hotstuff.NewReplicaClient(1)
+	VoteRequestMsg, err := client1.Commit(context.Background(), CommitMsg)
+	log.Println("测试Commit的错误信息如下: ", err)
+	log.Println("测试Commit的返回信息如下: ", VoteRequestMsg)
+
+	_, err = client1.Debug(context.Background(), &pb.DebugMsg{})
+}
+
+func Test_VoteCommit(t *testing.T) {
+	signer2 := cryp.NewSignerByID(2)
+	sig, _ := signer2.Sign(pb.MsgType_COMMIT_VOTE, 1, []byte("FFFFFFFFFFFF"))
+	vote := pb.VoteRequest{
+		ViewNumber: 1,
+		MsgType:    pb.MsgType_COMMIT_VOTE,
+		Voter:      2,
+		Signature:  sig,
+		Hash:       []byte("FFFFFFFFFFFF"),
+	}
+	client1 := *hotstuff.NewReplicaClient(1)
+	_, err := client1.VoteCommit(context.Background(), &vote)
+	log.Println("测试VoteCommit的错误信息如下: ", err)
+}
+
+func Test_Decide(t *testing.T) {
+	signer2 := cryp.NewSignerByID(2)
+	QC := GetValidQC(pb.MsgType_COMMIT)
+	qcjson, _ := json.Marshal(QC)
+	sig, _ := signer2.NormSign(qcjson)
+
+	cmd := []byte("CMD of View:  1")
+	hasher := crypto.SHA256.New()
+	hasher.Write(cmd)
+	hash := []byte(fmt.Sprintf("%x", hasher.Sum(nil)))
+	DecideMsg := &pb.DecideMsg{
+		MsgType:    pb.MsgType_DECIDE,
+		ViewNumber: 1,
+		Qc:         QC,
+		Hash:       hash,
+		Signature:  sig,
+	}
+	client1 := *hotstuff.NewReplicaClient(1)
+	_, err := client1.Decide(context.Background(), DecideMsg)
+	log.Println("测试Decide的错误信息如下: ", err)
 }

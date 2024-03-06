@@ -46,7 +46,7 @@ type HotstuffClient interface {
 	NewView(ctx context.Context, in *NewViewMsg, opts ...grpc.CallOption) (*Proposal, error)
 	Timeout(ctx context.Context, in *TimeoutMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// rpc Sync(SyncRequest) returns (SyncResponse);
-	Debug(ctx context.Context, in *DebugMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Debug(ctx context.Context, in *DebugMsg, opts ...grpc.CallOption) (*DebugMsg, error)
 }
 
 type hotstuffClient struct {
@@ -138,8 +138,8 @@ func (c *hotstuffClient) Timeout(ctx context.Context, in *TimeoutMsg, opts ...gr
 	return out, nil
 }
 
-func (c *hotstuffClient) Debug(ctx context.Context, in *DebugMsg, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *hotstuffClient) Debug(ctx context.Context, in *DebugMsg, opts ...grpc.CallOption) (*DebugMsg, error) {
+	out := new(DebugMsg)
 	err := c.cc.Invoke(ctx, Hotstuff_Debug_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -161,7 +161,7 @@ type HotstuffServer interface {
 	NewView(context.Context, *NewViewMsg) (*Proposal, error)
 	Timeout(context.Context, *TimeoutMsg) (*emptypb.Empty, error)
 	// rpc Sync(SyncRequest) returns (SyncResponse);
-	Debug(context.Context, *DebugMsg) (*emptypb.Empty, error)
+	Debug(context.Context, *DebugMsg) (*DebugMsg, error)
 	mustEmbedUnimplementedHotstuffServer()
 }
 
@@ -196,7 +196,7 @@ func (UnimplementedHotstuffServer) NewView(context.Context, *NewViewMsg) (*Propo
 func (UnimplementedHotstuffServer) Timeout(context.Context, *TimeoutMsg) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Timeout not implemented")
 }
-func (UnimplementedHotstuffServer) Debug(context.Context, *DebugMsg) (*emptypb.Empty, error) {
+func (UnimplementedHotstuffServer) Debug(context.Context, *DebugMsg) (*DebugMsg, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Debug not implemented")
 }
 func (UnimplementedHotstuffServer) mustEmbedUnimplementedHotstuffServer() {}

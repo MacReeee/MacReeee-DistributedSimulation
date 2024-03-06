@@ -115,7 +115,7 @@ func (chain *Blockchain) PruneBlock(block *pb.Block, NewestChild *pb.Block) []st
 func (chain *Blockchain) CreateBlock(ParentHash []byte, ViewNumber int64, QC *pb.QC, Cmd []byte, Proposer int32) *pb.Block {
 	chain.curHeight++
 	hasher := crypto.SHA256.New()
-	hasher.Write(Cmd)
+	hasher.Write(Cmd) //区块的哈希是Cmd的哈希
 	hash := []byte(fmt.Sprintf("%x", hasher.Sum(nil)))
 	block := &pb.Block{
 		Hash:       hash,
@@ -129,4 +129,8 @@ func (chain *Blockchain) CreateBlock(ParentHash []byte, ViewNumber int64, QC *pb
 	}
 	// todo: 在这里需要有某一个模块给出自身id，赋值给Proposer
 	return block
+}
+
+func (chain *Blockchain) GetBlockChain() (map[string]*pb.Block, map[int64]*pb.Block) {
+	return chain.Blocks, chain.BlockAtHeight
 }

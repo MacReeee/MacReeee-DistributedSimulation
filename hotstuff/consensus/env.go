@@ -1,5 +1,7 @@
 package hotstuff
 
+// Deprecated: 该文件中的变量已经不再使用
+
 import (
 	"distributed/hotstuff/pb"
 

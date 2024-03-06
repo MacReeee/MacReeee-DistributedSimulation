@@ -34,6 +34,9 @@ type Chain interface {
 	Store(block *pb.Block)
 	StoreToTemp(block *pb.Block)
 	GetBlockFromTemp(hash []byte) *pb.Block
+
+	//Debug
+	GetBlockChain() (map[string]*pb.Block, map[int64]*pb.Block)
 }
 type CRYP interface {
 	Sign(msgType pb.MsgType, viewnumber int64, BlockHash []byte) ([]byte, error) // 用于对投票信息 "${消息类型},${视图号},${区块hash}" 进行签名

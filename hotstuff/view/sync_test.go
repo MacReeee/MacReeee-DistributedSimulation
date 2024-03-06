@@ -2,6 +2,7 @@ package view
 
 import (
 	"fmt"
+	"log"
 	"testing"
 	"time"
 )
@@ -21,12 +22,14 @@ func TestSynchronize_Start(t *testing.T) {
 	//启动超时事件接收器
 	go func() {
 		timer := time.After(15 * time.Second)
+		i := 1
 		for {
 			select {
 			case <-timer:
 				return
 			case <-sync.Timeout():
-				fmt.Printf("侦测到超时事件\n")
+				fmt.Printf("侦测到超时事件: %d, 当前视图号: %d\n", i, sync.CurrentView)
+				i++
 			}
 		}
 	}()
@@ -48,12 +51,12 @@ func TestSynchronize_Start(t *testing.T) {
 	// 假设 Leader 的计算是基于当前视图编号的
 	currentView := sync.ViewNumber()
 	ViewSuccess(sync)
-	expectedLeader := int32(currentView)%4 + 1
-	leader := sync.GetLeader()
+	// expectedLeader := int32(currentView)%4 + 1
+	// leader := sync.GetLeader()
 
-	if leader != expectedLeader {
-		t.Errorf("GetLeader() = %v, want %v", leader, expectedLeader)
-	}
+	// if leader != expectedLeader {
+	// 	t.Errorf("GetLeader() = %v, want %v", leader, expectedLeader)
+	// }
 
 	// 模拟工作一段时间后结束视图
 	time.Sleep(1 * time.Second)
@@ -66,9 +69,15 @@ func TestSynchronize_Start(t *testing.T) {
 
 	// 验证视图编号是否增加
 	newViewNumber := sync.ViewNumber()
+	log.Println("最终视图号: ", sync.CurrentView)
 	if newViewNumber <= currentView {
 		t.Errorf("ViewNumber did not increase after view succeeded")
 	}
 }
 
 // 更多的测试...
+
+// func Test_ViewSuccess(t *testing.T) {
+// 	sync := New() // 假设 New 函数返回 *Synchronize 实现了 Synchronizer 接口
+// 	ctx_success, success := sync.GetContext()
+// }

@@ -23,10 +23,6 @@ func MatchingMsg(Type pb.MsgType, ViewNumber int64, TarType pb.MsgType, TarviewN
 	return condition1 && condition2, nil
 }
 
-func Sign(msg []byte) []byte {
-	return nil
-}
-
 func ViewSuccess(sync middleware.Synchronizer) {
 	_, success := sync.GetContext()
 	success()

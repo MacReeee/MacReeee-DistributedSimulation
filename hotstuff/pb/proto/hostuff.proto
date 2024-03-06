@@ -17,11 +17,12 @@ service hotstuff {
 
     rpc Timeout(TimeoutMsg) returns (google.protobuf.Empty);
     // rpc Sync(SyncRequest) returns (SyncResponse);
-    rpc Debug(DebugMsg) returns (google.protobuf.Empty);
+    rpc Debug(DebugMsg) returns (DebugMsg);
 }
 
 message DebugMsg {
-    int64 num = 1;
+    string Command = 1; //调用debug时填入
+    string Response = 2; //返回的结果
 }
 
 message Proposal{

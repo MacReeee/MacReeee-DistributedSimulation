@@ -34,6 +34,8 @@ type Synchronize struct {
 
 	timeouts    map[int64]map[int32]*pb.TimeoutMsg
 	TimeoutChan chan bool
+
+	debug_count int
 }
 
 func New() *Synchronize {
@@ -48,7 +50,9 @@ func New() *Synchronize {
 		timeouts:    make(map[int64]map[int32]*pb.TimeoutMsg),
 		TimeoutChan: make(chan bool, 1),
 	}
+	Synchronizer.mu.Lock()
 	modules.MODULES.Synchronizer = Synchronizer
+	Synchronizer.mu.Unlock()
 	return Synchronizer
 }
 
@@ -59,9 +63,10 @@ func (s *Synchronize) StartTimeOutTimer(ctx_timeout context.Context, timeout con
 	case <-s.timer.C:
 		if ctx_timeout.Err() == nil {
 			timeout() //停止正常退出逻辑
+			s.debug_count++
 			s.duration.ViewTimeout(s)
+			log.Println("侦测到试图超时, 已侦测到", s.debug_count, "次超时事件")
 			s.TimeoutChan <- true //向外部发送超时事件
-			log.Println("侦测到试图超时")
 		}
 	//////////////////////////////////////////////////////////////////////////超时逻辑
 
@@ -90,6 +95,8 @@ func (s *Synchronize) Start(ctx_success context.Context) {
 
 func (s *Synchronize) GetLeader(viewnumber ...int64) int32 { //如果传入了视图号，则按照传入的视图号计算，否则按照当前视图号计算
 	if len(viewnumber) == 0 {
+		s.mu.Lock()
+		defer s.mu.Unlock()
 		return int32(s.CurrentView) % hotstuff.NumReplicas
 	}
 	return int32(viewnumber[0]) % hotstuff.NumReplicas
@@ -100,10 +107,12 @@ func (s *Synchronize) TimerReset() bool {
 }
 
 func (s *Synchronize) GetContext() (context.Context, context.CancelFunc) {
-	return s.duration.GetContext(), s.duration.CancelFunc
+	return s.duration.GetContext(), s.duration.SuccessFunc()
 }
 
 func (s *Synchronize) ViewNumber() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.CurrentView
 }
 
@@ -129,7 +138,8 @@ func (s *Synchronize) StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, N
 
 func (s *Synchronize) GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *sync.Once) {
 	voter, sigs := s.duration.GetVoter(msgType)
-	return voter, sigs, s.duration.GetOnce(msgType)
+	once := s.duration.GetOnce(msgType)
+	return voter, sigs, once
 }
 
 func (s *Synchronize) HighQC() *pb.QC {

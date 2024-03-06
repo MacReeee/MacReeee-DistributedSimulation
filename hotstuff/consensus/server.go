@@ -13,7 +13,6 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type ReplicaServer struct {
@@ -61,7 +60,7 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 		BlockHash:    []byte("FFFFFFFFFFFF"),
 	}
 
-	pb.RegisterHotstuffServer(server, &ReplicaServer{
+	replicaserver := &ReplicaServer{
 		threshold: 1,
 		count:     0,
 		wg:        stsync.WaitGroup{},
@@ -69,7 +68,10 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 		PrepareQC: PrepareQC,
 		LockedQC:  LockedQC,
 		ID:        id,
-	})
+	}
+
+	pb.RegisterHotstuffServer(server, replicaserver)
+	go NextViewDebugMode(replicaserver) //todo: debug模式下预防视图超时阻塞，正式使用替换成NextView函数
 	//log.Println("副本服务启动成功: ", addr)
 	modules.MODULES.ReplicaServer = server
 	return server, &listener
@@ -184,12 +186,12 @@ func (s *ReplicaServer) Propose(ctx context.Context, Proposal *pb.Proposal) (*pb
 		Hash:       Proposal.Block.Hash,
 		MsgType:    pb.MsgType_PREPARE_VOTE,
 	}
-	/*------ debug mode ------*/
-	return PrepareVoteMsg, nil
-	/*---- debug mode end ----*/
-	//leader := *modules.MODULES.ReplicaClient[sync.GetLeader()]
-	//leader.VotePrepare(context.Background(), PrepareVoteMsg)
+	///*------ debug mode ------*/
 	//return PrepareVoteMsg, nil
+	///*---- debug mode end ----*/
+	leader := *modules.MODULES.ReplicaClient[sync.GetLeader()]
+	leader.VotePrepare(context.Background(), PrepareVoteMsg)
+	return PrepareVoteMsg, nil
 }
 
 // 作为主节点接收副本对准备消息的投票
@@ -243,7 +245,6 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (
 				Signature:  sig,
 			}
 			for _, client := range modules.MODULES.ReplicaClient {
-				// (*client).PreCommit(sync.GetContext(), PreCommitMsg)
 				(*client).PreCommit(context.Background(), PreCommitMsg)
 			}
 			s.count = 0 //重置计数器
@@ -283,13 +284,12 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommi
 		MsgType:    pb.MsgType_PRE_COMMIT_VOTE,
 	}
 	leader := *modules.MODULES.ReplicaClient[sync.GetLeader()]
-	// leader.VotePreCommit(sync.GetContext(), PreCommitVoteMsg)
 	leader.VotePreCommit(context.Background(), PreCommitVoteMsg)
 	return PreCommitVoteMsg, nil
 }
 
 func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest) (*pb.CommitMsg, error) {
-	log.Println("接收到PreCommit投票")
+	log.Println("接收到PreCommit Vote")
 	var (
 		sync = modules.MODULES.Synchronizer
 		cryp = modules.MODULES.Signer
@@ -300,8 +300,9 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest)
 		return nil, err
 	}
 	// 签名校验
-	if !cryp.Verify(vote.Voter, vote.Signature, vote.Hash) {
-		return nil, fmt.Errorf("precommit vote signature is not valid")
+	msg := []byte(fmt.Sprintf("%d,%d,%x", vote.MsgType, vote.ViewNumber, vote.Hash))
+	if !cryp.Verify(vote.Voter, msg, vote.Signature) {
+		return nil, fmt.Errorf("Pre_Commit Vote 的签名验证失败")
 	}
 	sync.StoreVote(pb.MsgType_PRE_COMMIT_VOTE, vote)
 	s.mu.Lock()
@@ -336,7 +337,6 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest)
 				Signature:  sig,
 			}
 			for _, client := range modules.MODULES.ReplicaClient {
-				// (*client).Commit(sync.GetContext(), CommitMsg)
 				(*client).Commit(context.Background(), CommitMsg)
 			}
 			s.count = 0 //重置计数器
@@ -374,7 +374,6 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb.CommitMsg) (*p
 		MsgType:    pb.MsgType_COMMIT_VOTE,
 	}
 	leader := *modules.MODULES.ReplicaClient[sync.GetLeader()]
-	// leader.VoteCommit(sync.GetContext(), CommitVoteMsg)
 	leader.VoteCommit(context.Background(), CommitVoteMsg)
 	return CommitVoteMsg, nil
 }
@@ -391,7 +390,8 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*
 		return nil, err
 	}
 	// 签名校验
-	if !cryp.Verify(vote.Voter, vote.Signature, vote.Hash) {
+	msg := []byte(fmt.Sprintf("%d,%d,%x", vote.MsgType, vote.ViewNumber, vote.Hash))
+	if !cryp.Verify(vote.Voter, msg, vote.Signature) {
 		return nil, fmt.Errorf("commit vote signature is not valid")
 	}
 	sync.StoreVote(pb.MsgType_COMMIT_VOTE, vote)
@@ -427,7 +427,6 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*
 				Signature:  sig, //暂未获取
 			}
 			for _, client := range modules.MODULES.ReplicaClient {
-				// (*client).Decide(sync.GetContext(), DecideMsg)
 				(*client).Decide(context.Background(), DecideMsg)
 			}
 			s.count = 0 //重置计数器
@@ -467,12 +466,62 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*p
 		Signature:  sig,
 	}
 	leader := *modules.MODULES.ReplicaClient[sync.GetLeader()]
-	// leader.NewView(sync.GetContext(), NewViewMsg)
 	leader.NewView(context.Background(), NewViewMsg)
 	return NewViewMsg, nil
 }
 
-func NextView(s *ReplicaServer) { //所有的wait for阶段如果超时，都会调用这个函数，//todo 记得go调用
+//如果连续失败多个视图，如何保障节点之间的视图对齐？
+
+func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.DebugMsg, error) {
+	var (
+		sync = modules.MODULES.Synchronizer
+		//cryp  = modules.MODULES.Signer
+		chain = modules.MODULES.Chain
+	)
+	fmt.Printf("\n接收到Server模块调试指令: %v\n", debug.Command)
+	switch debug.Command {
+	case "OutputBlocks":
+		chainByHash, chainByHeight := chain.GetBlockChain()
+		log.Println("哈希: ", chainByHash)
+		log.Println("高度: ", chainByHeight)
+		return &pb.DebugMsg{}, nil
+
+	case "PrintViewNumber":
+		log.Println("当前视图号: ", sync.ViewNumber())
+		return &pb.DebugMsg{}, nil
+
+	case "ViewSuccess":
+		ctx_success, success := sync.GetContext()
+		log.Println("当前视图号: ", sync.ViewNumber())
+		sync.Start(ctx_success)
+		success()
+		log.Println("调用ViewSuccess后的视图号: ", sync.ViewNumber())
+		go func() {
+			time.Sleep(15 * time.Second)
+			log.Println("15s后的视图号: ", sync.ViewNumber())
+		}()
+		return &pb.DebugMsg{}, nil
+
+	case "StartSimulation":
+		if s.ID == 1 {
+
+		}
+		return &pb.DebugMsg{}, nil
+	default:
+		log.Println("未知的命令...")
+		return nil, fmt.Errorf("未知的调试命令...")
+	}
+	return &pb.DebugMsg{}, nil
+}
+
+func (s *ReplicaServer) SafeNode(block *pb.Block, qc *pb.QC) bool {
+	condition1 := (string(block.ParentHash) == string(qc.BlockHash))         //检查是否是父区块的子区块
+	condition2 := (string(block.ParentHash) == string(s.LockedQC.BlockHash)) //安全性
+	condition3 := (qc.ViewNumber > s.LockedQC.ViewNumber)                    //活性
+	return condition1 && (condition2 || condition3)
+}
+
+func NextView(s *ReplicaServer) { //所有的wait for阶段超时都会调用这个函数，//todo 记得go调用
 	var (
 		sync = modules.MODULES.Synchronizer
 		cryp = modules.MODULES.Signer
@@ -499,22 +548,18 @@ func NextView(s *ReplicaServer) { //所有的wait for阶段如果超时，都会
 	}
 }
 
-//如果连续失败多个视图，如何保障节点之间的视图对齐？
+/*-------- debug functions --------*/
 
-func (s *ReplicaServer) Debug(context.Context, *pb.DebugMsg) (*emptypb.Empty, error) {
+func NextViewDebugMode(s *ReplicaServer) { //所有的wait for阶段超时都会调用这个函数，//todo 记得go调用
 	var (
-		sync  = modules.MODULES.Synchronizer
-		cryp  = modules.MODULES.Signer
-		chain = modules.MODULES.Chain
+		sync = modules.MODULES.Synchronizer
+		//cryp = modules.MODULES.Signer
+		// chain = modules.MODULES.Chain
 	)
-	log.Println("Server模块debug info: ", sync, cryp, chain)
-	log.Println(sync.ViewNumber())
-	return &emptypb.Empty{}, nil
-}
-
-func (s *ReplicaServer) SafeNode(block *pb.Block, qc *pb.QC) bool {
-	condition1 := (string(block.ParentHash) == string(qc.BlockHash))         //检查是否是父区块的子区块
-	condition2 := (string(block.ParentHash) == string(s.LockedQC.BlockHash)) //安全性
-	condition3 := (qc.ViewNumber > s.LockedQC.ViewNumber)                    //活性
-	return condition1 && (condition2 || condition3)
+	i := 1
+	for {
+		<-sync.Timeout()
+		// log.Println("捕获到视图超时，已捕获超时次数: ", i, "当前视图号: ", sync.ViewNumber())
+		i++
+	}
 }

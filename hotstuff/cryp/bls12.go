@@ -67,7 +67,7 @@ func NewSignerByID(ID int32) *Signer {
 	return signer
 }
 
-// 对 "${消息类型},${视图号},${区块hash}" 进行签名
+// 对 "${消息类型},${视图号},${区块hash}" 进行签名，投票和发布QC都运用此签名规则
 func (s *Signer) Sign(msgType pb.MsgType, viewnumber int64, BlockHash []byte) ([]byte, error) {
 	msg := []byte(fmt.Sprintf("%d,%d,%x", msgType, viewnumber, BlockHash))
 	return bdn.Sign(suite, s.PrivateKey, msg)
@@ -77,7 +77,7 @@ func (s *Signer) NormSign(msg []byte) ([]byte, error) {
 	return bdn.Sign(suite, s.PrivateKey, msg)
 }
 
-//传入顺序：投票者，消息，签名
+// 传入顺序：投票者，消息，签名
 func (s *Signer) Verify(voter int32, msg []byte, sig []byte) bool {
 	publicKey := suite.G2().Point()
 	pk_bin, err := hex.DecodeString(pks[voter-1])
