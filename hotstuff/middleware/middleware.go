@@ -10,8 +10,8 @@ import (
 
 type Synchronizer interface {
 	GetLeader(viewnumber ...int64) int32
-	Start(ctx context.Context)
-	StartTimeOutTimer(ctx context.Context, timeout context.CancelFunc)
+	Start()
+	// StartTimeOutTimer(ctx context.Context, timeout context.CancelFunc)
 	TimerReset() bool
 	GetContext() (context.Context, context.CancelFunc)
 
@@ -21,6 +21,8 @@ type Synchronizer interface {
 	StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, NewViewMsg ...*pb.NewViewMsg)
 	GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *sync.Once) // 返回投票者、投票信息、对应的once
 	HighQC() *pb.QC
+
+	//no use
 	QC(msgType pb.MsgType) *pb.QC //合成一个QC
 
 	//Debug

@@ -11,89 +11,50 @@ import (
 )
 
 var (
-	BASE_Timeout = 500 * time.Millisecond //基础超时时间
-	MAX_Timeout  = 2 * time.Second        //最大超时时间
+	BASE_Timeout = 50 * time.Millisecond  //基础超时时间
+	MAX_Timeout  = 500 * time.Millisecond //最大超时时间
 )
 
-// /* ------- debug mode ------- */
-// var (
-// 	BASE_Timeout = 500 * time.Second  //基础超时时间
-// 	MAX_Timeout  = 2000 * time.Second //最大超时时间
-// )
+type State int
 
-// /* ----- debug mode end ----- */
+const (
+	Initializing State = iota
+	Running
+	TimeOut
+	Succeeded
 
-// 仅计时相关以及视图切换，不参与共识过程
-type Synchronize struct {
-	mu          sync.Mutex
+	Failed //暂时用不到
+)
+
+type Event int
+
+const (
+	StartEvent Event = iota
+	TimeoutEvent
+	SuccessEvent
+
+	FailEvent //暂时用不到
+)
+
+type SYNC struct {
+	State State
+
+	mu sync.RWMutex
+
 	CurrentView int64
-	// HighQC      *pb.QC //开启一个视图需要一个HighQC
-	HighTC   *pb.QC
-	duration ViewDuration
-	timer    *time.Timer //每个视图的计时器，超时后打印日志 //现行逻辑用不上
 
-	timeouts    map[int64]map[int32]*pb.TimeoutMsg
+	view       view          //当前视图
+	max        time.Duration // 视图超时的上限
+	timeoutMul time.Duration // 在失败的视图上，将当前平均值乘以此数（应大于1），类似指数退避
+
+	timer     *time.Timer //每个视图的计时器
+	eventChan chan Event
+
 	TimeoutChan chan bool
-
-	debug_count int
 }
 
-func New() *Synchronize {
-	viewDuration := NewViewDuration(float64(MAX_Timeout), 1)
-	// viewDuration.
-	Synchronizer := &Synchronize{
-		CurrentView: 1,
-		// HighQC:      nil,
-		// HighTC:      nil,
-		duration:    viewDuration,
-		timer:       time.NewTimer(1000 * time.Second),
-		timeouts:    make(map[int64]map[int32]*pb.TimeoutMsg),
-		TimeoutChan: make(chan bool, 1),
-	}
-	Synchronizer.mu.Lock()
-	modules.MODULES.Synchronizer = Synchronizer
-	Synchronizer.mu.Unlock()
-	return Synchronizer
-}
-
-func (s *Synchronize) StartTimeOutTimer(ctx_timeout context.Context, timeout context.CancelFunc) {
-	s.timer = time.NewTimer(s.duration.Duration())
-	select {
-	//////////////////////////////////////////////////////////////////////////超时逻辑
-	case <-s.timer.C:
-		if ctx_timeout.Err() == nil {
-			timeout() //停止正常退出逻辑
-			s.debug_count++
-			s.duration.ViewTimeout(s)
-			log.Println("侦测到试图超时, 已侦测到", s.debug_count, "次超时事件")
-			s.TimeoutChan <- true //向外部发送超时事件
-		}
-	//////////////////////////////////////////////////////////////////////////超时逻辑
-
-	case <-ctx_timeout.Done(): //由视图正常退出触发，等于超时逻辑被取消
-		return
-	}
-}
-
-// 启动一个视图，不是整个视图链，ctx是viewDuration中的ctx
-func (s *Synchronize) Start(ctx_success context.Context) {
-	ctx_timeout, timeout := context.WithCancel(context.Background())
-	go s.StartTimeOutTimer(ctx_timeout, timeout)
-	//如果视图正常退出，则执行这个
-	select {
-	//////////////////////////////////////////////////////////////////////////成功退出视图逻辑
-	case <-ctx_success.Done():
-		timeout()
-		log.Println("视图正常退出")
-		s.duration.ViewSucceeded(s)
-	//////////////////////////////////////////////////////////////////////////成功退出视图逻辑
-
-	case <-ctx_timeout.Done(): //超时逻辑
-		return
-	}
-}
-
-func (s *Synchronize) GetLeader(viewnumber ...int64) int32 { //如果传入了视图号，则按照传入的视图号计算，否则按照当前视图号计算
+// 如果传入视图号，则返回该视图号对应的 Leader 编号，否则返回当前视图对应的 Leader 编号。
+func (s *SYNC) GetLeader(viewnumber ...int64) int32 {
 	if len(viewnumber) == 0 {
 		s.mu.Lock()
 		defer s.mu.Unlock()
@@ -102,61 +63,101 @@ func (s *Synchronize) GetLeader(viewnumber ...int64) int32 { //如果传入了�
 	return int32(viewnumber[0]) % hotstuff.NumReplicas
 }
 
-func (s *Synchronize) TimerReset() bool {
-	return s.timer.Reset(s.duration.Duration())
+func (s *SYNC) Start() {
+	s.eventChan <- StartEvent
 }
 
-func (s *Synchronize) GetContext() (context.Context, context.CancelFunc) {
-	return s.duration.GetContext(), s.duration.SuccessFunc()
+func (s *SYNC) TimerReset() bool {
+	return s.timer.Reset(s.view.Duration(s))
 }
 
-func (s *Synchronize) ViewNumber() int64 {
+func (s *SYNC) GetContext() (context.Context, context.CancelFunc) {
+	return s.view.ctx_success, s.view.success
+}
+
+func (s *SYNC) ViewNumber() int64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.CurrentView
 }
 
-func (s *Synchronize) Timeout() <-chan bool {
+func (s *SYNC) Timeout() <-chan bool {
 	return s.TimeoutChan
 }
 
-func (s *Synchronize) StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, NewViewMsg ...*pb.NewViewMsg) {
+func (s *SYNC) StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, NewViewMsg ...*pb.NewViewMsg) {
 	if NormalMsg != nil {
 		switch msgType {
 		case pb.MsgType_PREPARE_VOTE:
-			s.duration.vote().Prepare = append(s.duration.vote().Prepare, NormalMsg)
+			s.view.Vote.Prepare = append(s.view.Vote.Prepare, NormalMsg)
+			s.view.Vote.PrepareVoter = append(s.view.Vote.PrepareVoter, NormalMsg.Voter)
 		case pb.MsgType_PRE_COMMIT_VOTE:
-			s.duration.vote().PreCommit = append(s.duration.vote().PreCommit, NormalMsg)
+			s.view.Vote.PreCommit = append(s.view.Vote.PreCommit, NormalMsg)
+			s.view.Vote.PreCommitVoter = append(s.view.Vote.PreCommitVoter, NormalMsg.Voter)
 		case pb.MsgType_COMMIT_VOTE:
-			s.duration.vote().Commit = append(s.duration.vote().Commit, NormalMsg)
+			s.view.Vote.Commit = append(s.view.Vote.Commit, NormalMsg)
+			s.view.Vote.CommitVoter = append(s.view.Vote.CommitVoter, NormalMsg.Voter)
 		}
 	}
 	if NewViewMsg != nil {
-		s.duration.vote().NewView = append(s.duration.vote().NewView, NewViewMsg...)
+		s.view.Vote.NewView = append(s.view.Vote.NewView, NewViewMsg...)
+		s.view.Vote.NewViewVoter = append(s.view.Vote.NewViewVoter, NewViewMsg[0].Id)
 	}
 }
 
-func (s *Synchronize) GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *sync.Once) {
-	voter, sigs := s.duration.GetVoter(msgType)
-	once := s.duration.GetOnce(msgType)
-	return voter, sigs, once
+func (s *SYNC) GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *sync.Once) {
+	var (
+		voters []int32
+		sigs   [][]byte
+	)
+	switch msgType {
+	case pb.MsgType_NEW_VIEW:
+		for _, vote := range s.view.Vote.NewView {
+			sigs = append(sigs, vote.Signature)
+		}
+		voters = s.view.Vote.NewViewVoter
+		return voters, sigs, s.view.once[pb.MsgType_NEW_VIEW]
+
+	case pb.MsgType_PREPARE_VOTE:
+		for _, vote := range s.view.Vote.Prepare {
+			sigs = append(sigs, vote.Signature)
+		}
+		voters = s.view.Vote.PrepareVoter
+		return voters, sigs, s.view.once[pb.MsgType_PREPARE_VOTE]
+
+	case pb.MsgType_PRE_COMMIT_VOTE:
+		for _, vote := range s.view.Vote.PreCommit {
+			sigs = append(sigs, vote.Signature)
+		}
+		voters = s.view.Vote.PreCommitVoter
+		return voters, sigs, s.view.once[pb.MsgType_PRE_COMMIT_VOTE]
+
+	case pb.MsgType_COMMIT_VOTE:
+		for _, vote := range s.view.Vote.Commit {
+			sigs = append(sigs, vote.Signature)
+		}
+		voters = s.view.Vote.CommitVoter
+		return voters, sigs, s.view.once[pb.MsgType_COMMIT_VOTE]
+	}
+	return voters, sigs, nil
 }
 
-func (s *Synchronize) HighQC() *pb.QC {
-	return s.duration.HighQC()
+func (s *SYNC) HighQC() *pb.QC {
+	var highqc *pb.QC = s.view.Vote.NewView[0].Qc
+	for i := 1; i < len(s.view.Vote.NewView); i++ {
+		if s.view.Vote.NewView[i].Qc.ViewNumber > highqc.ViewNumber {
+			highqc = s.view.Vote.NewView[i].Qc
+		}
+	}
+	return highqc
 }
 
-func (s *Synchronize) QC(msgType pb.MsgType) *pb.QC {
-	return s.duration.QC(msgType)
+// 根据存储的投票合成一个QC，已在server中实现
+func (s *SYNC) QC(msgType pb.MsgType) *pb.QC {
+	return &pb.QC{}
 }
 
-/* -------utils functions------- */
-
-func (s *Synchronize) Vote() *vote {
-	return s.duration.vote()
-}
-
-func (s *Synchronize) Debug() {
+func (s *SYNC) Debug() {
 	var (
 		sync = modules.MODULES.Synchronizer
 		// cryp  = modules.MODULES.SignerAndVerifier
@@ -166,13 +167,109 @@ func (s *Synchronize) Debug() {
 	log.Println("同步模块debug info: ", sync, cryp, chain)
 }
 
-/* -----utils functions end----- */
+func NewSync() *SYNC {
+	sync := &SYNC{
+		State:       Initializing,
+		mu:          sync.RWMutex{},
+		CurrentView: 1,
+		view:        *NewView(),
+		max:         MAX_Timeout,
+		timeoutMul:  1,
 
-// type ViewChangeEvent struct {
-// 	View    int64
-// 	Timeout bool
-// }
+		TimeoutChan: make(chan bool, 1),
+		eventChan:   make(chan Event),
+	}
+	go EventLoop(sync)
+	sync.mu.Lock()
+	modules.MODULES.Synchronizer = sync
+	sync.mu.Unlock()
+	return sync
+}
 
-// type TimeoutEvent struct {
-// 	View int64
-// }
+// handleEvent 处理从视图传来的事件，并且根据事件和当前状态来变更状态。
+func (s *SYNC) handleEvent(event Event) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	switch event {
+	case StartEvent:
+		s.startView()
+	case TimeoutEvent:
+		s.handleTimeout()
+	case SuccessEvent:
+		s.handleSuccess()
+		// 可能还有其他状态和事件的处理
+	}
+}
+
+func (s *SYNC) startView() {
+	if s.State != Initializing {
+		// 如果当前状态不是 Initializing，则不应启动新视图
+		return
+	}
+	s.State = Running
+	// 初始化视图运行所需资源
+	//log.Println("开启新视图，当前视图: ", s.CurrentView)
+	// 设置超时定时器
+	if s.timer != nil {
+		if !s.timer.Stop() { // 确保停止旧的计时器
+			select {
+			case <-s.timer.C:
+				// 定时器已过期，从通道中成功读取
+			default:
+				// 定时器尚未过期，或者已经被读取，不做任何操作
+			}
+		}
+	}
+	s.timer = time.NewTimer(s.view.Duration(s))
+
+	go func() {
+		select {
+		case <-s.view.ctx_success.Done():
+			s.eventChan <- SuccessEvent
+		case <-s.timer.C:
+			s.eventChan <- TimeoutEvent
+		}
+	}()
+}
+
+func (s *SYNC) handleTimeout() {
+	if s.State != Running {
+		// 只有在 Running 状态时，超时才有效
+		return
+	}
+	s.TimeoutChan <- true
+	//log.Println("侦测到视图超时")
+	if s.timeoutMul < MAX_Timeout/BASE_Timeout {
+		s.timeoutMul *= 2
+	} else {
+		// 达到最大倍数时，保持不变或设置为最大超时倍数的值
+		s.timeoutMul = MAX_Timeout / BASE_Timeout
+	}
+	s.prepareForNextView()
+}
+
+func (s *SYNC) handleSuccess() {
+	if s.State != Running {
+		// 只有在 Running 状态时，成功才有效
+		return
+	}
+	//log.Println("视图成功退出")
+	s.timeoutMul = 1
+	s.prepareForNextView()
+}
+
+func (s *SYNC) prepareForNextView() {
+	s.CurrentView++
+	s.view = *NewView() // 重新初始化视图
+	s.State = Initializing
+	// 在状态更新后，主动触发 StartEvent，开始新视图的监听
+	go func() { s.eventChan <- StartEvent }()
+}
+
+// mainEventLoop 是事件循环，负责接收事件并将其传递给状态处理函数。
+func EventLoop(s *SYNC) {
+	for event := range s.eventChan {
+		s.handleEvent(event)
+	}
+}

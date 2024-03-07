@@ -80,11 +80,11 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 func NewReplicaClient(id int32) *pb.HotstuffClient {
 	conn, err := grpc.Dial(fmt.Sprintf(":%d", id+4000), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Println("副本客户端连接失败:", err)
+		log.Println("副本", id, "连接失败:", err)
 		return nil
 	}
 	client := pb.NewHotstuffClient(conn)
-	log.Println("副本客户端连接成功")
+	log.Println("连接副本", id, "成功")
 	// client.NewView(context.Background(), &pb.NewViewMsg{})
 	modules.MODULES.ReplicaClient[id] = &client
 	return &client
@@ -122,7 +122,7 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) 
 			qcjson := QCMarshal(HighQC)
 			sig, _ := cryp.NormSign(qcjson)
 			// 创建区块
-			block := chain.CreateBlock(NewViewMsg.Qc.BlockHash, sync.ViewNumber(), NewViewMsg.Qc, []byte("CMD of View:  "+strconv.Itoa(int(sync.ViewNumber()))), s.ID)
+			block := chain.CreateBlock(NewViewMsg.Qc.BlockHash, sync.ViewNumber(), HighQC, []byte("CMD of View: "+strconv.Itoa(int(sync.ViewNumber()))), s.ID)
 			//log.Println(block)
 			ProposalMsg = &pb.Proposal{
 				Block: block,
@@ -474,26 +474,29 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*p
 
 func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.DebugMsg, error) {
 	var (
-		sync = modules.MODULES.Synchronizer
-		//cryp  = modules.MODULES.Signer
+		sync  = modules.MODULES.Synchronizer
+		cryp  = modules.MODULES.Signer
 		chain = modules.MODULES.Chain
 	)
-	fmt.Printf("\n接收到Server模块调试指令: %v\n", debug.Command)
+	fmt.Printf("\n接收到调试指令: %v\n", debug.Command)
 	switch debug.Command {
+	//打印区块链
 	case "OutputBlocks":
 		chainByHash, chainByHeight := chain.GetBlockChain()
 		log.Println("哈希: ", chainByHash)
 		log.Println("高度: ", chainByHeight)
 		return &pb.DebugMsg{}, nil
 
+	// 打印视图号
 	case "PrintViewNumber":
 		log.Println("当前视图号: ", sync.ViewNumber())
 		return &pb.DebugMsg{}, nil
 
+	//测试视图成功功能
 	case "ViewSuccess":
-		ctx_success, success := sync.GetContext()
+		_, success := sync.GetContext()
 		log.Println("当前视图号: ", sync.ViewNumber())
-		sync.Start(ctx_success)
+		sync.Start()
 		success()
 		log.Println("调用ViewSuccess后的视图号: ", sync.ViewNumber())
 		go func() {
@@ -502,16 +505,67 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 		}()
 		return &pb.DebugMsg{}, nil
 
-	case "StartSimulation":
+	//启动仿真程序
+	case "Genshin Impact, Start!":
 		if s.ID == 1 {
-
+			highQC := s.PrepareQC
+			qcjson := QCMarshal(highQC)
+			sig, _ := cryp.NormSign(qcjson)
+			cmd := []byte("CMD of View: 1")
+			block := chain.CreateBlock([]byte("FFFFFFFFFFFF"), 1, highQC, cmd, 1)
+			var ProposalMsg = &pb.Proposal{
+				Block:      block,
+				Qc:         highQC,
+				Proposer:   1,
+				ViewNumber: sync.ViewNumber(),
+				Signature:  sig,
+				MsgType:    pb.MsgType_PREPARE,
+			}
+			for _, client := range modules.MODULES.ReplicaClient {
+				(*client).Propose(context.Background(), ProposalMsg)
+			}
+			return &pb.DebugMsg{Response: "已执行启动程序"}, nil
 		}
 		return &pb.DebugMsg{}, nil
+
+	//控制节点连接其他节点
+	case "ConnectToOthers":
+		for i := 1; i <= 4; i++ {
+			NewReplicaClient(int32(i))
+		}
+		return &pb.DebugMsg{}, nil
+
+	//测试节点之间的相互调用
+	case "CrossCall":
+		clients := modules.MODULES.ReplicaClient
+		// 初始化一个默认的成功响应
+		response := &pb.DebugMsg{Response: "所有副本调用成功"}
+
+		for i := 1; i <= 4; i++ {
+			client := clients[int32(i)]
+			if client != nil {
+				_, err := (*client).Debug(context.Background(), &pb.DebugMsg{Command: "PrintSelfID"})
+				if err != nil {
+					// 处理每个client调用的错误，这里选择了记录错误并修改响应消息
+					fmt.Printf("调用副本 %d 失败: %v\n", i, err)
+					response.Response = "至少一个副本调用失败"
+					return response, err
+				}
+			} else {
+				fmt.Printf("副本 %d 未连接\n", i)
+				return &pb.DebugMsg{Response: "侦测到网络未初始化"}, fmt.Errorf("副本 %d 未连接", i)
+			}
+		}
+		return response, nil
+
+	case "PrintSelfID":
+		log.Println("当前节点ID: ", s.ID)
+		return &pb.DebugMsg{}, nil
+
 	default:
-		log.Println("未知的命令...")
-		return nil, fmt.Errorf("未知的调试命令...")
+		log.Println("未知的调试命令...")
+		return &pb.DebugMsg{Response: "未知的调试命令: " + debug.Command}, nil
 	}
-	return &pb.DebugMsg{}, nil
 }
 
 func (s *ReplicaServer) SafeNode(block *pb.Block, qc *pb.QC) bool {

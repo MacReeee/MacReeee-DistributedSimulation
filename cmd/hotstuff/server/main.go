@@ -12,16 +12,17 @@ import (
 
 func main() { //此主函数用于启动服务端
 
-	//分析堆栈时取消注释
+	////分析堆栈时取消注释
 	//go func() {
 	//	http.ListenAndServe("localhost:6060", nil)
 	//}()
 
-	id := int32(*flag.Int("id", 1, "replica id"))
+	idptr := flag.Int("id", 1, "replica id")
 	flag.Parse()
+	id := int32(*idptr)
 
 	blockchain.NewBlockChain()
-	view.New()
+	view.NewSync()
 	cryp.NewSignerByID(id)
 
 	server, listener := hotstuff.NewReplicaServer(id)

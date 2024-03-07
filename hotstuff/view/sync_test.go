@@ -14,10 +14,10 @@ func ViewSuccess(sync *Synchronize) {
 
 func TestSynchronize_Start(t *testing.T) {
 	sync := New() // 假设 New 函数返回 *Synchronize 实现了 Synchronizer 接口
-	ctx, success := sync.GetContext()
+	_, success := sync.GetContext()
 
 	// 启动视图管理器
-	go sync.Start(ctx)
+	go sync.Start()
 
 	//启动超时事件接收器
 	go func() {
@@ -62,7 +62,7 @@ func TestSynchronize_Start(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	time.Sleep(1 * time.Second)
 	time.Sleep(1 * time.Second)
-	ctx, success = sync.GetContext()
+	_, success = sync.GetContext()
 	success()
 	time.Sleep(1 * time.Second)
 	time.Sleep(1 * time.Second)
@@ -81,3 +81,21 @@ func TestSynchronize_Start(t *testing.T) {
 // 	sync := New() // 假设 New 函数返回 *Synchronize 实现了 Synchronizer 接口
 // 	ctx_success, success := sync.GetContext()
 // }
+
+func Test_NewSync(t *testing.T) {
+	sync := NewSync()
+	go func() {
+		for {
+			<-sync.Timeout()
+		}
+	}()
+	_, success := sync.GetContext()
+	log.Println("当前视图号: ", sync.ViewNumber())
+
+	sync.Start()
+
+	time.Sleep(5 * time.Second)
+	success()
+
+	time.Sleep(1000 * time.Second)
+}
