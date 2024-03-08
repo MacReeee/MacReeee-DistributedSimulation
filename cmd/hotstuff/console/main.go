@@ -63,6 +63,8 @@ func main() {
 
 		if len(tar) == 1 {
 			Command(cmd, 1)
+		} else if tar[1] == all[1] && tar[2] == all[2] && tar[3] == all[3] && tar[0] == all[0] {
+			Command(cmd, all...)
 		} else {
 			fmt.Println("请输入作用副本ID: ")
 			nodes, _ := reader.ReadString('\n')

@@ -22,6 +22,10 @@ var (
 	StopFlag = false          //中断标志
 )
 
+var (
+	ReplicaNum = 4
+)
+
 type ReplicaServer struct {
 	mu stsync.Mutex
 	// sigs      map[kyber.Point][]byte
@@ -67,8 +71,14 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 		BlockHash:    []byte("FFFFFFFFFFFF"),
 	}
 
+	var thresh int
+	if DebugMode {
+		thresh = 1
+	} else {
+		thresh = 3
+	}
 	replicaserver := &ReplicaServer{
-		threshold: 1,
+		threshold: thresh,
 		count:     0,
 		wg:        stsync.WaitGroup{},
 		once:      stsync.Once{},
@@ -78,9 +88,10 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 	}
 
 	pb.RegisterHotstuffServer(server, replicaserver)
-	go NextView(replicaserver) //todo: debug模式下预防视图超时阻塞，正式使用替换成NextView函数
+	go NextView(replicaserver) // debug模式下预防视图超时阻塞，正式使用替换成NextView函数
 	//log.Println("副本服务启动成功: ", addr)
 	modules.MODULES.ReplicaServer = server
+	modules.MODULES.ReplicaServerStruct = replicaserver
 	return server, &listener
 }
 
@@ -98,7 +109,7 @@ func NewReplicaClient(id int32) *pb.HotstuffClient {
 }
 
 func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*pb.VoteRequest, error) {
-	log.Println("接收到提案")
+	log.Println("接收到来自 ", Proposal.Proposer, " 的提案")
 
 	//用以控制台控制中断
 	if StopFlag {
@@ -143,18 +154,26 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*pb
 		leader = *modules.MODULES.ReplicaClient[1]
 	} else {
 		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
+		log.Println("视图 ", *sync.ViewNumber(), " 的领导者是: ", sync.GetLeader())
 	}
 	go leader.VotePrepare(context.Background(), PrepareVoteMsg)
 	return PrepareVoteMsg, nil
 }
 
 func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (*pb.Precommit, error) {
-	log.Println("接收到Prepare投票")
 	var (
 		sync = modules.MODULES.Synchronizer
 		cryp = modules.MODULES.Signer
 		// chain = modules.MODULES.Chain
 	)
+
+	//如果已经触发阈值条件，不在接收后续的Prepare投票
+	_, _, once := sync.GetVoter(pb.MsgType_PREPARE_VOTE)
+	if once.IsDone() {
+		return nil, nil
+	}
+
+	log.Println("接收到来自 ", vote.Voter, " 的Prepare投票")
 	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb.MsgType_PREPARE_VOTE, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
@@ -207,7 +226,7 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (
 }
 
 func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommit) (*pb.VoteRequest, error) {
-	log.Println("接收到PreCommit消息")
+	log.Println("接收到来自 ", PrecommitMsg.Id, " 的PreCommit消息")
 	var (
 		sync  = modules.MODULES.Synchronizer
 		cryp  = modules.MODULES.Signer
@@ -244,12 +263,19 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommi
 }
 
 func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest) (*pb.CommitMsg, error) {
-	log.Println("接收到PreCommit Vote")
 	var (
 		sync = modules.MODULES.Synchronizer
 		cryp = modules.MODULES.Signer
 		// chain = modules.MODULES.Chain
 	)
+
+	//如果已经触发阈值条件，不在接收后续的PreCommit投票
+	_, _, once := sync.GetVoter(pb.MsgType_PRE_COMMIT_VOTE)
+	if once.IsDone() {
+		return nil, nil
+	}
+
+	log.Println("接收到来自 ", vote.Voter, " 的PreCommit投票")
 	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb.MsgType_PRE_COMMIT_VOTE, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
@@ -302,7 +328,7 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest)
 }
 
 func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb.CommitMsg) (*pb.VoteRequest, error) {
-	log.Println("接收到Commit消息")
+	log.Println("接收到来自 ", CommitMsg.Id, " 的Commit消息")
 	var (
 		sync = modules.MODULES.Synchronizer
 		cryp = modules.MODULES.Signer
@@ -338,12 +364,19 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb.CommitMsg) (*p
 }
 
 func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*pb.DecideMsg, error) {
-	log.Println("接收到Commit投票")
 	var (
 		sync = modules.MODULES.Synchronizer
 		cryp = modules.MODULES.Signer
 		// chain = modules.MODULES.Chain
 	)
+	log.Println("接收到来自 ", vote.Voter, " 的Commit投票")
+
+	//如果已经触发阈值条件，不在接收后续的Commit投票
+	_, _, once := sync.GetVoter(pb.MsgType_COMMIT_VOTE)
+	if once.IsDone() {
+		return nil, nil
+	}
+
 	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb.MsgType_COMMIT_VOTE, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
@@ -395,7 +428,7 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*
 }
 
 func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*pb.NewViewMsg, error) {
-	log.Println("接收到Decide消息")
+	log.Println("接收到来自 ", DecideMsg.Id, " 的Decide消息")
 	var (
 		sync  = modules.MODULES.Synchronizer
 		cryp  = modules.MODULES.Signer
@@ -435,12 +468,19 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*p
 }
 
 func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) (*pb.Proposal, error) {
-	log.Println("接收到NewView消息")
 	var (
 		sync  = modules.MODULES.Synchronizer
 		cryp  = modules.MODULES.Signer
 		chain = modules.MODULES.Chain
 	)
+	log.Println("接收到来自 ", NewViewMsg.Voter, " 的NewView消息")
+
+	//如果已经触发阈值条件，不在接收后续的NewView消息
+	_, _, once := sync.GetVoter(pb.MsgType_NEW_VIEW)
+	if once.IsDone() {
+		return nil, nil
+	}
+
 	if ok, err := MatchingMsg(NewViewMsg.MsgType, NewViewMsg.ViewNumber, pb.MsgType_NEW_VIEW, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
@@ -467,7 +507,6 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) 
 			sig, _ := cryp.NormSign(qcjson)
 			// 创建区块
 			block := chain.CreateBlock(NewViewMsg.Qc.BlockHash, *sync.ViewNumber()+1, HighQC, []byte("CMD of View: "+strconv.Itoa(int(*sync.ViewNumber()+1))), s.ID)
-			//log.Println(block)
 			ProposalMsg = &pb.Proposal{
 				Block: block,
 				Qc:    HighQC,
@@ -484,7 +523,6 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) 
 			}
 
 			s.count = 0 //重置计数器
-			// s.Vote.NewView = []*pb.NewViewMsg{} //清空NewView
 		})
 		return ProposalMsg, nil
 	}

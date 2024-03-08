@@ -9,12 +9,12 @@ import (
 )
 
 type modules struct {
-	Chain         middleware.Chain
-	Synchronizer  middleware.Synchronizer
-	Signer        middleware.CRYP
-	ReplicaServer *grpc.Server
-	// ReplicaClient map[int32]*pb.HotstuffClient
-	ReplicaClient map[int32]*pb.HotstuffClient
+	Chain               middleware.Chain
+	Synchronizer        middleware.Synchronizer
+	Signer              middleware.CRYP
+	ReplicaServer       *grpc.Server
+	ReplicaServerStruct middleware.Server
+	ReplicaClient       map[int32]*pb.HotstuffClient
 
 	// Deprecated: Use CRYP instead
 	SignerAndVerifier middleware.Crypto

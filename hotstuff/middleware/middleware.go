@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"context"
+	d "distributed/hotstuff/dependency"
 	"distributed/hotstuff/pb"
-	"sync"
 
 	"go.dedis.ch/kyber/v3"
 )
@@ -19,7 +19,7 @@ type Synchronizer interface {
 	ViewNumber() *int64
 	Timeout() <-chan bool
 	StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, NewViewMsg ...*pb.NewViewMsg)
-	GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *sync.Once) // 返回投票者、投票信息、对应的once
+	GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *d.OnceWithDone) // 返回投票者、投票信息、对应的once
 	HighQC() *pb.QC
 
 	//no use
@@ -55,4 +55,8 @@ type Crypto interface {
 	ThresholdSign(msg []byte, SigMap map[kyber.Point][]byte) ([]byte, kyber.Point, error)
 	ThreshVerify(msg []byte, sig []byte, pubKey kyber.Point) bool
 	Verify(msg []byte, sig []byte) bool
+}
+
+type Server interface {
+	SelfID() int32
 }

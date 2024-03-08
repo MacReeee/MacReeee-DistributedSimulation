@@ -40,8 +40,7 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 		}()
 		return &pb.DebugMsg{}, nil
 	//启动仿真程序
-	case "start":
-		sync.Start()
+	case "ConnectToOthersandStart":
 		if s.ID == 1 {
 			highQC := s.PrepareQC
 			qcjson := QCMarshal(highQC)
@@ -68,8 +67,9 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 		for i := 1; i <= 4; i++ {
 			NewReplicaClient(int32(i))
 		}
+		sync.Start()
 		return &pb.DebugMsg{}, nil
-	case "原神，启动！", "ConnectToSelfandStart":
+	case "ConnectToSelfandStart":
 		NewReplicaClient(s.ID)
 		sync.Start()
 		if s.ID == 1 {
@@ -90,9 +90,8 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 			for _, client := range clients {
 				go (*client).Prepare(context.Background(), ProposalMsg)
 			}
-			return &pb.DebugMsg{Response: "已执行启动程序"}, nil
 		}
-		return &pb.DebugMsg{}, nil
+		return &pb.DebugMsg{Response: "已执行启动程序"}, nil
 	//测试节点之间的相互调用
 	case "CrossCall":
 		clients := modules.MODULES.ReplicaClient
@@ -128,6 +127,13 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 		StopFlag = false
 		wg.Done()
 		return &pb.DebugMsg{Response: "已恢复仿真"}, nil
+	case "clc":
+		fmt.Printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+		return &pb.DebugMsg{}, nil
+	case "debug":
+		DebugMode = !DebugMode
+		log.Println("当前Debug状态: ", DebugMode)
+		return &pb.DebugMsg{}, nil
 	default:
 		log.Println("未知的调试命令...")
 		return &pb.DebugMsg{Response: "未知的调试命令: " + debug.Command}, nil
@@ -144,4 +150,8 @@ func PrintChain() {
 	for hash, block := range chainByHash {
 		fmt.Println("区块Hash: ", hash, "\n", "子区块的Hash: ", block.Children, "\n", "父Hash: ", string(block.ParentHash))
 	}
+}
+
+func (s *ReplicaServer) SelfID() int32 {
+	return s.ID
 }

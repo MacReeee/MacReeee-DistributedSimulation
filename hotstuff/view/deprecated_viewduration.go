@@ -2,8 +2,8 @@ package view
 
 import (
 	"context"
+	d "distributed/hotstuff/dependency"
 	"distributed/hotstuff/pb"
-	"sync"
 	"time"
 )
 
@@ -20,21 +20,9 @@ type ViewDuration interface {
 	SuccessFunc() context.CancelFunc
 	vote() *vote
 	GetVoter(msgType pb.MsgType) ([]int32, [][]byte)
-	GetOnce(msgType pb.MsgType) *sync.Once
+	GetOnce(msgType pb.MsgType) *d.OnceWithDone
 	HighQC() *pb.QC
 	QC(msgType pb.MsgType) *pb.QC // 根据存储的投票合成一个QC
-}
-
-type vote struct {
-	NewView   []*pb.NewViewMsg
-	Prepare   []*pb.VoteRequest
-	PreCommit []*pb.VoteRequest
-	Commit    []*pb.VoteRequest
-
-	NewViewVoter   []int32
-	PrepareVoter   []int32
-	PreCommitVoter []int32
-	CommitVoter    []int32
 }
 
 // viewDuration 使用先前视图的统计数据来猜测视图持续时间的合适值。
@@ -48,7 +36,7 @@ type viewDuration struct {
 	success     context.CancelFunc //成功函数
 
 	Vote vote // 存储投票
-	once map[pb.MsgType]*sync.Once
+	once map[pb.MsgType]*d.OnceWithDone
 }
 
 // NewViewDuration 返回一个ViewDuration，它基于先前视图的持续时间来近似视图持续时间。
@@ -71,12 +59,12 @@ func NewViewDuration(maxTimeout, multiplier float64) ViewDuration {
 			PreCommitVoter: []int32{},
 			CommitVoter:    []int32{},
 		},
-		once: make(map[pb.MsgType]*sync.Once),
+		once: make(map[pb.MsgType]*d.OnceWithDone),
 	}
-	view.once[pb.MsgType_NEW_VIEW] = &sync.Once{}
-	view.once[pb.MsgType_PREPARE_VOTE] = &sync.Once{}
-	view.once[pb.MsgType_PRE_COMMIT_VOTE] = &sync.Once{} //debuging
-	view.once[pb.MsgType_COMMIT_VOTE] = &sync.Once{}     //debuging
+	view.once[pb.MsgType_NEW_VIEW] = &d.OnceWithDone{}
+	view.once[pb.MsgType_PREPARE_VOTE] = &d.OnceWithDone{}
+	view.once[pb.MsgType_PRE_COMMIT_VOTE] = &d.OnceWithDone{} //debuging
+	view.once[pb.MsgType_COMMIT_VOTE] = &d.OnceWithDone{}     //debuging
 
 	view.ctx_success, view.success = context.WithCancel(ctx)
 	// fmt.Println("viewDuration")
@@ -159,7 +147,7 @@ func (v *viewDuration) GetVoter(msgType pb.MsgType) ([]int32, [][]byte) {
 	return nil, nil
 }
 
-func (v *viewDuration) GetOnce(msgType pb.MsgType) *sync.Once {
+func (v *viewDuration) GetOnce(msgType pb.MsgType) *d.OnceWithDone {
 	return v.once[msgType]
 }
 

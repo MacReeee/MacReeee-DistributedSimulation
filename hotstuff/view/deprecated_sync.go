@@ -7,6 +7,7 @@ package view
 import (
 	"context"
 	hotstuff "distributed/hotstuff/consensus"
+	d "distributed/hotstuff/dependency"
 	"distributed/hotstuff/modules"
 	"distributed/hotstuff/pb"
 	"log"
@@ -123,7 +124,7 @@ func (s *Synchronize) StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, N
 	}
 }
 
-func (s *Synchronize) GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *sync.Once) {
+func (s *Synchronize) GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *d.OnceWithDone) {
 	voter, sigs := s.duration.GetVoter(msgType)
 	once := s.duration.GetOnce(msgType)
 	return voter, sigs, once

@@ -3,6 +3,7 @@ package view
 import (
 	"context"
 	hotstuff "distributed/hotstuff/consensus"
+	d "distributed/hotstuff/dependency"
 	"distributed/hotstuff/modules"
 	"distributed/hotstuff/pb"
 	"log"
@@ -13,6 +14,9 @@ import (
 var (
 	BASE_Timeout = 5000 * time.Second  //基础超时时间
 	MAX_Timeout  = 30000 * time.Second //最大超时时间
+
+	// 用于测试
+	DebugMode = true
 )
 
 type State int
@@ -20,10 +24,6 @@ type State int
 const (
 	Initializing State = iota
 	Running
-	TimeOut
-	Succeeded
-
-	Failed //暂时用不到
 )
 
 type Event int
@@ -32,8 +32,6 @@ const (
 	StartEvent Event = iota
 	TimeoutEvent
 	SuccessEvent
-
-	FailEvent //暂时用不到
 )
 
 type SYNC struct {
@@ -55,6 +53,9 @@ type SYNC struct {
 
 // 如果传入视图号，则返回该视图号对应的 Leader 编号，否则返回当前视图对应的 Leader 编号。
 func (s *SYNC) GetLeader(viewnumber ...int64) int32 {
+	if DebugMode {
+
+	}
 	if len(viewnumber) == 0 {
 		s.mu.Lock()
 		defer s.mu.Unlock()
@@ -105,7 +106,7 @@ func (s *SYNC) StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, NewViewM
 	}
 }
 
-func (s *SYNC) GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *sync.Once) {
+func (s *SYNC) GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *d.OnceWithDone) {
 	var (
 		voters []int32
 		sigs   [][]byte
