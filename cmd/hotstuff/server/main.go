@@ -20,6 +20,7 @@ func main() { //此主函数用于启动服务端
 	idptr := flag.Int("id", 1, "replica id")
 	flag.Parse()
 	id := int32(*idptr)
+	log.SetFlags(log.Lshortfile | log.LstdFlags)
 
 	blockchain.NewBlockChain()
 	view.NewSync()

@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	BASE_Timeout = 50 * time.Millisecond  //基础超时时间
-	MAX_Timeout  = 500 * time.Millisecond //最大超时时间
+	BASE_Timeout = 5000 * time.Second  //基础超时时间
+	MAX_Timeout  = 30000 * time.Second //最大超时时间
 )
 
 type State int
@@ -75,10 +75,10 @@ func (s *SYNC) GetContext() (context.Context, context.CancelFunc) {
 	return s.view.ctx_success, s.view.success
 }
 
-func (s *SYNC) ViewNumber() int64 {
+func (s *SYNC) ViewNumber() *int64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.CurrentView
+	return &s.CurrentView
 }
 
 func (s *SYNC) Timeout() <-chan bool {
@@ -101,7 +101,7 @@ func (s *SYNC) StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, NewViewM
 	}
 	if NewViewMsg != nil {
 		s.view.Vote.NewView = append(s.view.Vote.NewView, NewViewMsg...)
-		s.view.Vote.NewViewVoter = append(s.view.Vote.NewViewVoter, NewViewMsg[0].Id)
+		s.view.Vote.NewViewVoter = append(s.view.Vote.NewViewVoter, NewViewMsg[0].ProposalId)
 	}
 }
 
@@ -139,7 +139,7 @@ func (s *SYNC) GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *sync.Once) {
 		voters = s.view.Vote.CommitVoter
 		return voters, sigs, s.view.once[pb.MsgType_COMMIT_VOTE]
 	}
-	return voters, sigs, nil
+	return nil, nil, nil
 }
 
 func (s *SYNC) HighQC() *pb.QC {
@@ -171,7 +171,7 @@ func NewSync() *SYNC {
 	sync := &SYNC{
 		State:       Initializing,
 		mu:          sync.RWMutex{},
-		CurrentView: 1,
+		CurrentView: 0,
 		view:        *NewView(),
 		max:         MAX_Timeout,
 		timeoutMul:  1,
@@ -239,7 +239,7 @@ func (s *SYNC) handleTimeout() {
 		return
 	}
 	s.TimeoutChan <- true
-	//log.Println("侦测到视图超时")
+	log.Println("视图 ", s.CurrentView, " 超时")
 	if s.timeoutMul < MAX_Timeout/BASE_Timeout {
 		s.timeoutMul *= 2
 	} else {
@@ -254,13 +254,12 @@ func (s *SYNC) handleSuccess() {
 		// 只有在 Running 状态时，成功才有效
 		return
 	}
-	//log.Println("视图成功退出")
+	// log.Println("视图 ", s.CurrentView, " 成功退出")
 	s.timeoutMul = 1
 	s.prepareForNextView()
 }
 
 func (s *SYNC) prepareForNextView() {
-	s.CurrentView++
 	s.view = *NewView() // 重新初始化视图
 	s.State = Initializing
 	// 在状态更新后，主动触发 StartEvent，开始新视图的监听

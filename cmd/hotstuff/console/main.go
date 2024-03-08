@@ -15,19 +15,17 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func ConnectToOthers() {
-	for i := 1; i <= 4; i++ {
-		if i == int(hotstuff.ReplicaID) {
-			continue
-		}
-		hotstuff.NewReplicaClient(int32(i + 1))
-	}
-}
-
 func main() {
-	fmt.Println("在确保所有节点已经启动的情况下，运行控制台程序，按任意键继续...")
-	var any string
-	fmt.Scanln(&any)
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("输入要调试节点, 默认1, 全部输入 'all'")
+	nodes, _ := reader.ReadString('\n')
+	nodes = strings.TrimSpace(nodes)
+	var tar []int32
+	if nodes == "all" {
+		tar = []int32{1, 2, 3, 4}
+	} else {
+		tar = []int32{1}
+	}
 
 	//创建各个节点的控制台实例
 	conns := make([]*grpc.ClientConn, 5)
@@ -41,7 +39,6 @@ func main() {
 	cons[3] = pb.NewHotstuffClient(conns[3])
 	cons[4] = pb.NewHotstuffClient(conns[4])
 
-	reader := bufio.NewReader(os.Stdin)
 	all := []int32{1, 2, 3, 4}
 	for {
 		fmt.Println("Command: ")
@@ -51,28 +48,49 @@ func main() {
 			break
 		}
 
-		fmt.Println("请输入作用副本ID: ")
-		nodes, _ := reader.ReadString('\n')
-		nodes = strings.TrimSpace(nodes)
-		var targets []int32
-		if nodes == "all" {
-			targets = all
-		} else {
-			nodeIDs := strings.Split(nodes, ",")
-			var targets []int
-			for _, idStr := range nodeIDs {
-				idStr = strings.TrimSpace(idStr) // 去除编号两端的空白字符
-				id, err := strconv.Atoi(idStr)
-				if err != nil {
-					fmt.Printf("无效的节点编号: %s\n", idStr)
-					continue
-				}
-				targets = append(targets, id)
-			}
+		if cmd == "restart" {
+			conns[1], _ = grpc.Dial(fmt.Sprintf(":%d", 4001), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conns[2], _ = grpc.Dial(fmt.Sprintf(":%d", 4002), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conns[3], _ = grpc.Dial(fmt.Sprintf(":%d", 4003), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conns[4], _ = grpc.Dial(fmt.Sprintf(":%d", 4004), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			cons[1] = pb.NewHotstuffClient(conns[1])
+			cons[2] = pb.NewHotstuffClient(conns[2])
+			cons[3] = pb.NewHotstuffClient(conns[3])
+			cons[4] = pb.NewHotstuffClient(conns[4])
+			fmt.Println("重连成功")
+			continue
 		}
-		Command(cmd, targets...)
+
+		if len(tar) == 1 {
+			Command(cmd, 1)
+		} else {
+			fmt.Println("请输入作用副本ID: ")
+			nodes, _ := reader.ReadString('\n')
+			nodes = strings.TrimSpace(nodes)
+			var targets []int32
+			if (nodes == "all") || (nodes == "") {
+				targets = all
+			} else {
+				nodeIDs := strings.Split(nodes, " ")
+				for _, idStr := range nodeIDs {
+					idStr = strings.TrimSpace(idStr)
+					id, err := strconv.Atoi(idStr)
+					if err != nil {
+						fmt.Printf("无效的节点编号: %s\n", idStr)
+						continue
+					}
+					targets = append(targets, int32(id))
+				}
+			}
+			Command(cmd, targets...)
+		}
 		fmt.Printf("\n")
 	}
+}
+
+var commandList = []string{
+	"OutputBlocks", "PrintViewNumber", "ViewSuccess", "CrossCall",
+	"PrintSelfID", "ConnectToOthers", "Start",
 }
 
 func Command(command string, targetid ...int32) {

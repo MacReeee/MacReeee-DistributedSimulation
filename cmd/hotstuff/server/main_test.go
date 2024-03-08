@@ -188,7 +188,7 @@ func Test_NewView(t *testing.T) {
 	qcjson := hotstuff.QCMarshal(QC)
 	sig, _ := signer2.NormSign(qcjson)
 	NewViewMsg := &pb.NewViewMsg{
-		Id:         2,
+		ProposalId: 2,
 		MsgType:    pb.MsgType_NEW_VIEW,
 		ViewNumber: 1,
 		Qc:         QC,
@@ -205,7 +205,7 @@ func Test_Server(t *testing.T) {
 	qcjson := hotstuff.QCMarshal(QC)
 	sig, _ := signer2.NormSign(qcjson)
 	NewViewMsg := &pb.NewViewMsg{
-		Id:         2,
+		ProposalId: 2,
 		MsgType:    pb.MsgType_NEW_VIEW,
 		ViewNumber: 1,
 		Qc:         QC,
@@ -226,7 +226,7 @@ func Test_Server(t *testing.T) {
 	log.Println("NewView错误: ", err)
 	// fmt.Println(ProposalMsg)
 
-	PrepareVoteMsg, err := client.Propose(context.Background(), ProposalMsg)
+	PrepareVoteMsg, err := client.Prepare(context.Background(), ProposalMsg)
 	log.Println("Propose错误: ", err)
 	// log.Println("消息格式：", Proposal.GetMsgType())
 	// log.Println(PrepareVoteMsg)

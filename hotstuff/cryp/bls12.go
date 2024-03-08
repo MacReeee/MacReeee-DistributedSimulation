@@ -80,12 +80,12 @@ func (s *Signer) NormSign(msg []byte) ([]byte, error) {
 // 传入顺序：投票者，消息，签名
 func (s *Signer) Verify(voter int32, msg []byte, sig []byte) bool {
 	publicKey := suite.G2().Point()
-	pk_bin, err := hex.DecodeString(pks[voter-1])
+	pkBin, err := hex.DecodeString(pks[voter-1])
 	if err != nil {
 		log.Println("解码公钥失败:", err)
 		return false
 	}
-	publicKey.UnmarshalBinary(pk_bin)
+	publicKey.UnmarshalBinary(pkBin)
 	return bdn.Verify(suite, publicKey, msg, sig) == nil
 }
 

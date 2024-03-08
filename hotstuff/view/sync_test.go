@@ -49,7 +49,7 @@ func TestSynchronize_Start(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// 假设 Leader 的计算是基于当前视图编号的
-	currentView := sync.ViewNumber()
+	currentView := *sync.ViewNumber()
 	ViewSuccess(sync)
 	// expectedLeader := int32(currentView)%4 + 1
 	// leader := sync.GetLeader()
@@ -70,7 +70,7 @@ func TestSynchronize_Start(t *testing.T) {
 	// 验证视图编号是否增加
 	newViewNumber := sync.ViewNumber()
 	log.Println("最终视图号: ", sync.CurrentView)
-	if newViewNumber <= currentView {
+	if *newViewNumber <= currentView {
 		t.Errorf("ViewNumber did not increase after view succeeded")
 	}
 }

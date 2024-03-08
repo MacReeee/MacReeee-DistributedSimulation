@@ -20,7 +20,7 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Hotstuff_Propose_FullMethodName       = "/pb.hotstuff/Propose"
+	Hotstuff_Prepare_FullMethodName       = "/pb.hotstuff/Prepare"
 	Hotstuff_VotePrepare_FullMethodName   = "/pb.hotstuff/VotePrepare"
 	Hotstuff_VotePreCommit_FullMethodName = "/pb.hotstuff/VotePreCommit"
 	Hotstuff_VoteCommit_FullMethodName    = "/pb.hotstuff/VoteCommit"
@@ -36,7 +36,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type HotstuffClient interface {
-	Propose(ctx context.Context, in *Proposal, opts ...grpc.CallOption) (*VoteRequest, error)
+	Prepare(ctx context.Context, in *Proposal, opts ...grpc.CallOption) (*VoteRequest, error)
 	VotePrepare(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*Precommit, error)
 	VotePreCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*CommitMsg, error)
 	VoteCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*DecideMsg, error)
@@ -57,9 +57,9 @@ func NewHotstuffClient(cc grpc.ClientConnInterface) HotstuffClient {
 	return &hotstuffClient{cc}
 }
 
-func (c *hotstuffClient) Propose(ctx context.Context, in *Proposal, opts ...grpc.CallOption) (*VoteRequest, error) {
+func (c *hotstuffClient) Prepare(ctx context.Context, in *Proposal, opts ...grpc.CallOption) (*VoteRequest, error) {
 	out := new(VoteRequest)
-	err := c.cc.Invoke(ctx, Hotstuff_Propose_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Hotstuff_Prepare_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (c *hotstuffClient) Debug(ctx context.Context, in *DebugMsg, opts ...grpc.C
 // All implementations must embed UnimplementedHotstuffServer
 // for forward compatibility
 type HotstuffServer interface {
-	Propose(context.Context, *Proposal) (*VoteRequest, error)
+	Prepare(context.Context, *Proposal) (*VoteRequest, error)
 	VotePrepare(context.Context, *VoteRequest) (*Precommit, error)
 	VotePreCommit(context.Context, *VoteRequest) (*CommitMsg, error)
 	VoteCommit(context.Context, *VoteRequest) (*DecideMsg, error)
@@ -169,8 +169,8 @@ type HotstuffServer interface {
 type UnimplementedHotstuffServer struct {
 }
 
-func (UnimplementedHotstuffServer) Propose(context.Context, *Proposal) (*VoteRequest, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Propose not implemented")
+func (UnimplementedHotstuffServer) Prepare(context.Context, *Proposal) (*VoteRequest, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Prepare not implemented")
 }
 func (UnimplementedHotstuffServer) VotePrepare(context.Context, *VoteRequest) (*Precommit, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VotePrepare not implemented")
@@ -212,20 +212,20 @@ func RegisterHotstuffServer(s grpc.ServiceRegistrar, srv HotstuffServer) {
 	s.RegisterService(&Hotstuff_ServiceDesc, srv)
 }
 
-func _Hotstuff_Propose_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Hotstuff_Prepare_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Proposal)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(HotstuffServer).Propose(ctx, in)
+		return srv.(HotstuffServer).Prepare(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Hotstuff_Propose_FullMethodName,
+		FullMethod: Hotstuff_Prepare_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HotstuffServer).Propose(ctx, req.(*Proposal))
+		return srv.(HotstuffServer).Prepare(ctx, req.(*Proposal))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -400,8 +400,8 @@ var Hotstuff_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*HotstuffServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Propose",
-			Handler:    _Hotstuff_Propose_Handler,
+			MethodName: "Prepare",
+			Handler:    _Hotstuff_Prepare_Handler,
 		},
 		{
 			MethodName: "VotePrepare",

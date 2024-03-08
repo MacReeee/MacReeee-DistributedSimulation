@@ -6,7 +6,7 @@ import "google/protobuf/empty.proto";
 import "hotstuff/pb/proto/enums.proto";
 
 service hotstuff {
-    rpc Propose(Proposal) returns (VoteRequest);
+    rpc Prepare(Proposal) returns (VoteRequest);
     rpc VotePrepare(VoteRequest) returns (Precommit);
     rpc VotePreCommit(VoteRequest) returns (CommitMsg);
     rpc VoteCommit(VoteRequest) returns (DecideMsg);
@@ -65,14 +65,6 @@ message DecideMsg {
     bytes signature = 7; //直接对接收到的消息的签名进行签名
 }
 
-message NewViewMsg {
-    int32 id = 1;
-    MsgType msg_type = 2;
-    int64 view_number = 3;
-    QC qc =4 ;
-    bytes signature = 7; //对QC进行签名
-}
-
 message TimeoutMsg {
     int32 id = 1;
     MsgType msg_type = 2;
@@ -113,7 +105,17 @@ message VoteRequest {
     int64 proposal_id = 1;
     int64 view_number = 2;
     int32 voter = 3;
-    bytes signature = 4; //直接对接收到的消息的签名进行签名
+    bytes signature = 4; //使用统一签名方案
     bytes hash = 5;
     MsgType msg_type = 6;
+}
+
+message NewViewMsg {
+    int32 proposal_id = 1;
+    int64 view_number = 2;
+    int32 voter = 3;
+    bytes signature = 4; //使用统一签名方案
+    bytes hash = 5;
+    MsgType msg_type = 6;
+    QC qc = 7;   
 }

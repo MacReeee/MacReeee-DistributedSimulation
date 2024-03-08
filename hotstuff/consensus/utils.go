@@ -25,6 +25,7 @@ func MatchingMsg(Type pb.MsgType, ViewNumber int64, TarType pb.MsgType, TarviewN
 
 func ViewSuccess(sync middleware.Synchronizer) {
 	_, success := sync.GetContext()
+	*sync.ViewNumber()++
 	success()
 }
 

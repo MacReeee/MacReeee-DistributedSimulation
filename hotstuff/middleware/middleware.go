@@ -16,7 +16,7 @@ type Synchronizer interface {
 	GetContext() (context.Context, context.CancelFunc)
 
 	//元数据
-	ViewNumber() int64
+	ViewNumber() *int64
 	Timeout() <-chan bool
 	StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, NewViewMsg ...*pb.NewViewMsg)
 	GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *sync.Once) // 返回投票者、投票信息、对应的once

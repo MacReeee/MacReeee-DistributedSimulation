@@ -48,12 +48,14 @@ func NewBlockChain() *Blockchain {
 
 // 存储区快
 func (bc *Blockchain) Store(block *pb.Block) {
+	log.Println(string(block.Hash), string(block.ParentHash))
 	bc.Mut.Lock()                          // 加锁
-	bc.Blocks[string(block.Hash)] = block  // 将区块存储到区块映射表中
+	bc.Blocks[string(block.Hash)] = block  // 将区块存储到哈希映射表中
 	bc.BlockAtHeight[block.Height] = block // 将区块存储到高度映射表中
 	//存储父区块的children字段
 	if string(block.ParentHash) != "000000000000" {
-		bc.Blocks[string(block.ParentHash)].Children = append(bc.Blocks[string(block.ParentHash)].Children, string(block.Hash))
+		parent := bc.Blocks[string(block.ParentHash)]
+		parent.Children = append(parent.Children, string(block.Hash))
 	}
 	bc.Mut.Unlock() // 解锁
 }
@@ -66,7 +68,8 @@ func (bc *Blockchain) StoreToTemp(block *pb.Block) {
 
 // 给定区块的哈希，查找对应的区块
 func (bc *Blockchain) GetBlock(hash []byte) *pb.Block {
-	return bc.Blocks[string(hash)]
+	block := bc.Blocks[string(hash)]
+	return block
 }
 
 func (bc *Blockchain) GetBlockFromTemp(hash []byte) *pb.Block {
@@ -74,7 +77,7 @@ func (bc *Blockchain) GetBlockFromTemp(hash []byte) *pb.Block {
 }
 
 // 剪枝
-// todo 此处可以检查被剪枝的区块来检测分叉，不做
+// 此处可以检查被剪枝的区块来检测分叉，不做
 // 被提交的最新区块的上一个区块才需要剪枝，因此在提交区块的时候记得调用剪枝
 // 第一个参数是需要剪枝的区块，第二个参数是被提交的最新区块
 func (chain *Blockchain) PruneBlock(block *pb.Block, NewestChild *pb.Block) []string {
@@ -99,12 +102,40 @@ func (chain *Blockchain) PruneBlock(block *pb.Block, NewestChild *pb.Block) []st
 		}
 	}
 	// 将NewestChild转化为json格式并存储到committed_blocks文件中
-	jsonData, err := json.Marshal(NewestChild)
+	type Data struct {
+		ParentHash string
+		Hash       string
+		Height     int64
+		CMD        string
+		ViewNumber int64
+		Proposer   int32
+		Children   []string
+	}
+	//将NewestChild转化成Data类型
+	data := Data{
+		ParentHash: string(NewestChild.ParentHash),
+		Hash:       string(NewestChild.Hash),
+		Height:     NewestChild.Height,
+		CMD:        string(NewestChild.Cmd),
+		ViewNumber: NewestChild.ViewNumber,
+		Proposer:   NewestChild.Proposer,
+		Children:   NewestChild.Children,
+	}
+	jsonData, err := json.MarshalIndent(data, "", "    ")
 	if err != nil {
 		log.Println("json转换失败:", err)
 	}
-	//todo 分不同节点不同文件存储
-	err = os.WriteFile("./committed_blocks"+strconv.Itoa(1)+".json", jsonData, 0644)
+	// 分不同节点不同文件存储
+	file, err := os.OpenFile("./committed_blocks"+strconv.Itoa(1)+".json", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		log.Println("文件打开失败:", err)
+	}
+	defer file.Close()
+	_, err = file.Write(jsonData)
+	if err != nil {
+		log.Println("文件写入失败:", err)
+	}
+	_, err = file.WriteString(",\n")
 	if err != nil {
 		log.Println("文件写入失败:", err)
 	}
@@ -125,12 +156,24 @@ func (chain *Blockchain) CreateBlock(ParentHash []byte, ViewNumber int64, QC *pb
 		Qc:         QC,
 		Cmd:        Cmd,
 		Proposer:   Proposer,
-		Children:   make([]string, 0),
+		Children:   []string{},
 	}
-	// todo: 在这里需要有某一个模块给出自身id，赋值给Proposer
 	return block
 }
 
 func (chain *Blockchain) GetBlockChain() (map[string]*pb.Block, map[int64]*pb.Block) {
 	return chain.Blocks, chain.BlockAtHeight
+}
+
+func GetDebuginfo(block *pb.Block) struct {
+	Hash       string
+	ParentHash string
+} {
+	return struct {
+		Hash       string
+		ParentHash string
+	}{
+		Hash:       string(block.Hash),
+		ParentHash: string(block.ParentHash),
+	}
 }

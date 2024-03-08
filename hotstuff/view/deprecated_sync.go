@@ -42,7 +42,7 @@ func New() *Synchronize {
 	viewDuration := NewViewDuration(float64(MAX_Timeout), 1)
 	// viewDuration.
 	Synchronizer := &Synchronize{
-		CurrentView: 1,
+		CurrentView: 0,
 		// HighQC:      nil,
 		// HighTC:      nil,
 		duration:    viewDuration,
@@ -97,10 +97,10 @@ func (s *Synchronize) GetContext() (context.Context, context.CancelFunc) {
 	return s.duration.GetContext(), s.duration.SuccessFunc()
 }
 
-func (s *Synchronize) ViewNumber() int64 {
+func (s *Synchronize) ViewNumber() *int64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.CurrentView
+	return &s.CurrentView
 }
 
 func (s *Synchronize) Timeout() <-chan bool {

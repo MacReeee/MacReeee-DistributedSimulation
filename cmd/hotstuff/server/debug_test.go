@@ -39,3 +39,5 @@ func Test_Debug_ViewSuccess(t *testing.T)     { Debug_Command("ViewSuccess") }  
 func Test_Debug_CrossCall(t *testing.T)       { Debug_Command("CrossCall", 2) }         // 测试交叉调用
 func Test_Debug_PrintSelfID(t *testing.T)     { Debug_Command("PrintSelfID", all...) }  // 打印自身ID
 func Test_Debug_ConnectToOthers(t *testing.T) { Debug_Command("ConnectToOthers", 2) }   // 连接其他节点
+func Test_Debug_Start(t *testing.T)           { Debug_Command("start") }                //启动仿真
+func Test_Debug_ConnectToSelf(t *testing.T)   { Debug_Command("ConnectToSelf") }        //连接自身
