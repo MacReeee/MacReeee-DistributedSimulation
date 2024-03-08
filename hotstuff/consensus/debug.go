@@ -2,6 +2,7 @@ package hotstuff
 
 import (
 	"context"
+	d "distributed/hotstuff/dependency"
 	"distributed/hotstuff/modules"
 	"distributed/hotstuff/pb"
 	"fmt"
@@ -40,7 +41,7 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 		}()
 		return &pb.DebugMsg{}, nil
 	//启动仿真程序
-	case "ConnectToOthersandStart":
+	case "StartAll":
 		if s.ID == 1 {
 			highQC := s.PrepareQC
 			qcjson := QCMarshal(highQC)
@@ -131,8 +132,8 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 		fmt.Printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
 		return &pb.DebugMsg{}, nil
 	case "debug":
-		DebugMode = !DebugMode
-		log.Println("当前Debug状态: ", DebugMode)
+		d.DebugMode = !d.DebugMode
+		log.Println("当前Debug状态: ", d.DebugMode)
 		return &pb.DebugMsg{}, nil
 	default:
 		log.Println("未知的调试命令...")

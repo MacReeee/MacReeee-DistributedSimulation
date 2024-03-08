@@ -14,9 +14,6 @@ import (
 var (
 	BASE_Timeout = 5000 * time.Second  //基础超时时间
 	MAX_Timeout  = 30000 * time.Second //最大超时时间
-
-	// 用于测试
-	DebugMode = true
 )
 
 type State int
@@ -53,15 +50,32 @@ type SYNC struct {
 
 // 如果传入视图号，则返回该视图号对应的 Leader 编号，否则返回当前视图对应的 Leader 编号。
 func (s *SYNC) GetLeader(viewnumber ...int64) int32 {
-	if DebugMode {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
+	//todo 测试代码
+	if d.DebugMode {
+		if s.CurrentView%2 == 0 {
+			return 2
+		} else {
+			return 1
+		}
 	}
+
 	if len(viewnumber) == 0 {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		return int32(s.CurrentView) % hotstuff.NumReplicas
+		leader := int32(s.CurrentView) % hotstuff.NumReplicas
+		if leader == 0 {
+			return hotstuff.NumReplicas
+		} else {
+			return leader
+		}
 	}
-	return int32(viewnumber[0]) % hotstuff.NumReplicas
+	leader := int32(viewnumber[0]) % hotstuff.NumReplicas
+	if leader == 0 {
+		return hotstuff.NumReplicas
+	} else {
+		return leader
+	}
 }
 
 func (s *SYNC) Start() {

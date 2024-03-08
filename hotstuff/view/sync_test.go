@@ -99,3 +99,10 @@ func Test_NewSync(t *testing.T) {
 
 	time.Sleep(1000 * time.Second)
 }
+
+func Test_GetLeader(t *testing.T) {
+	sync := NewSync()
+	for i := 0; i <= 20; i++ {
+		log.Println("输入视图 ", i, " 的主节点为: ", sync.GetLeader(int64(i)))
+	}
+}

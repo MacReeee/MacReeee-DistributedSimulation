@@ -23,8 +23,19 @@ func main() {
 	var tar []int32
 	if nodes == "all" {
 		tar = []int32{1, 2, 3, 4}
-	} else {
+	} else if nodes == "" {
 		tar = []int32{1}
+	} else {
+		nodeIDs := strings.Split(nodes, " ")
+		for _, idStr := range nodeIDs {
+			idStr = strings.TrimSpace(idStr)
+			id, err := strconv.Atoi(idStr)
+			if err != nil {
+				fmt.Printf("无效的节点编号: %s\n", idStr)
+				continue
+			}
+			tar = append(tar, int32(id))
+		}
 	}
 
 	//创建各个节点的控制台实例
@@ -63,7 +74,7 @@ func main() {
 
 		if len(tar) == 1 {
 			Command(cmd, 1)
-		} else if tar[1] == all[1] && tar[2] == all[2] && tar[3] == all[3] && tar[0] == all[0] {
+		} else if len(tar) == 4 {
 			Command(cmd, all...)
 		} else {
 			fmt.Println("请输入作用副本ID: ")
@@ -71,7 +82,7 @@ func main() {
 			nodes = strings.TrimSpace(nodes)
 			var targets []int32
 			if (nodes == "all") || (nodes == "") {
-				targets = all
+				targets = tar
 			} else {
 				nodeIDs := strings.Split(nodes, " ")
 				for _, idStr := range nodeIDs {

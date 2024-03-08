@@ -2,6 +2,7 @@ package hotstuff
 
 import (
 	"context"
+	d "distributed/hotstuff/dependency"
 	"distributed/hotstuff/modules"
 	"distributed/hotstuff/pb"
 	"fmt"
@@ -16,8 +17,6 @@ import (
 )
 
 var (
-	DebugMode = true //调试模式开关
-
 	wg       stsync.WaitGroup //中断控制
 	StopFlag = false          //中断标志
 )
@@ -72,7 +71,7 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 	}
 
 	var thresh int
-	if DebugMode {
+	if d.DebugMode {
 		thresh = 1
 	} else {
 		thresh = 3
@@ -150,7 +149,7 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*pb
 	}
 
 	var leader pb.HotstuffClient
-	if DebugMode {
+	if d.DebugMode {
 		leader = *modules.MODULES.ReplicaClient[1]
 	} else {
 		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
@@ -253,7 +252,7 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommi
 		MsgType:    pb.MsgType_PRE_COMMIT_VOTE,
 	}
 	var leader pb.HotstuffClient
-	if DebugMode {
+	if d.DebugMode {
 		leader = *modules.MODULES.ReplicaClient[1]
 	} else {
 		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
@@ -354,7 +353,7 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb.CommitMsg) (*p
 		MsgType:    pb.MsgType_COMMIT_VOTE,
 	}
 	var leader pb.HotstuffClient
-	if DebugMode {
+	if d.DebugMode {
 		leader = *modules.MODULES.ReplicaClient[1]
 	} else {
 		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
@@ -458,7 +457,7 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*p
 	}
 
 	var leader pb.HotstuffClient
-	if DebugMode {
+	if d.DebugMode {
 		leader = *modules.MODULES.ReplicaClient[1]
 	} else {
 		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()+1]
@@ -552,7 +551,7 @@ func NextView(s *ReplicaServer) { //所有的wait for阶段超时都会调用这
 			qcjson := QCMarshal(QC)
 			sig, _ := cryp.NormSign(qcjson)
 			var leader pb.HotstuffClient
-			if DebugMode {
+			if d.DebugMode {
 				leader = *modules.MODULES.ReplicaClient[1]
 			} else {
 				leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
