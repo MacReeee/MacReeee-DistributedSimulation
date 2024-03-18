@@ -442,3 +442,13 @@ func Test_GetLockedQCSigs(t *testing.T) {
 
 	// fmt.Println(bdn.Verify(suite, pk, msg, sig) == nil)
 }
+
+func Test_TestVerify(t *testing.T) {
+	signer := NewSignerByID(1)
+	msg := []byte("helloworld")
+	msg1 := []byte("hellowo2rld")
+	sig, _ := signer.NormSign(msg)
+
+	res := signer.Verify(1, msg1, sig)
+	fmt.Println(res)
+}

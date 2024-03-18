@@ -33,7 +33,7 @@ func Debug_Command(command string, targetid ...int32) {
 	}
 }
 
-func Test_Debug_OutputBlocks(t *testing.T)    { Debug_Command("OutputBlocks", all...) }       // 打印区块链
+func Test_Debug_OutputBlocks(t *testing.T)    { Debug_Command("PrintBlocks", all...) }        // 打印区块链
 func Test_Debug_PrintViewNumber(t *testing.T) { Debug_Command("PrintViewNumber") }            // 打印视图号
 func Test_Debug_ViewSuccess(t *testing.T)     { Debug_Command("ViewSuccess") }                // 测试视图成功
 func Test_Debug_CrossCall(t *testing.T)       { Debug_Command("CrossCall", 2) }               // 测试交叉调用

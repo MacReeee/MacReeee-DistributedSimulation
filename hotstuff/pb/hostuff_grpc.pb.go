@@ -36,14 +36,14 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type HotstuffClient interface {
-	Prepare(ctx context.Context, in *Proposal, opts ...grpc.CallOption) (*VoteRequest, error)
-	VotePrepare(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*Precommit, error)
-	VotePreCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*CommitMsg, error)
-	VoteCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*DecideMsg, error)
-	PreCommit(ctx context.Context, in *Precommit, opts ...grpc.CallOption) (*VoteRequest, error)
-	Commit(ctx context.Context, in *CommitMsg, opts ...grpc.CallOption) (*VoteRequest, error)
-	Decide(ctx context.Context, in *DecideMsg, opts ...grpc.CallOption) (*NewViewMsg, error)
-	NewView(ctx context.Context, in *NewViewMsg, opts ...grpc.CallOption) (*Proposal, error)
+	Prepare(ctx context.Context, in *Proposal, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	VotePrepare(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	VotePreCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	VoteCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	PreCommit(ctx context.Context, in *Precommit, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Commit(ctx context.Context, in *CommitMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Decide(ctx context.Context, in *DecideMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	NewView(ctx context.Context, in *NewViewMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Timeout(ctx context.Context, in *TimeoutMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// rpc Sync(SyncRequest) returns (SyncResponse);
 	Debug(ctx context.Context, in *DebugMsg, opts ...grpc.CallOption) (*DebugMsg, error)
@@ -57,8 +57,8 @@ func NewHotstuffClient(cc grpc.ClientConnInterface) HotstuffClient {
 	return &hotstuffClient{cc}
 }
 
-func (c *hotstuffClient) Prepare(ctx context.Context, in *Proposal, opts ...grpc.CallOption) (*VoteRequest, error) {
-	out := new(VoteRequest)
+func (c *hotstuffClient) Prepare(ctx context.Context, in *Proposal, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Hotstuff_Prepare_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -66,8 +66,8 @@ func (c *hotstuffClient) Prepare(ctx context.Context, in *Proposal, opts ...grpc
 	return out, nil
 }
 
-func (c *hotstuffClient) VotePrepare(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*Precommit, error) {
-	out := new(Precommit)
+func (c *hotstuffClient) VotePrepare(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Hotstuff_VotePrepare_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -75,8 +75,8 @@ func (c *hotstuffClient) VotePrepare(ctx context.Context, in *VoteRequest, opts 
 	return out, nil
 }
 
-func (c *hotstuffClient) VotePreCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*CommitMsg, error) {
-	out := new(CommitMsg)
+func (c *hotstuffClient) VotePreCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Hotstuff_VotePreCommit_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -84,8 +84,8 @@ func (c *hotstuffClient) VotePreCommit(ctx context.Context, in *VoteRequest, opt
 	return out, nil
 }
 
-func (c *hotstuffClient) VoteCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*DecideMsg, error) {
-	out := new(DecideMsg)
+func (c *hotstuffClient) VoteCommit(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Hotstuff_VoteCommit_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -93,8 +93,8 @@ func (c *hotstuffClient) VoteCommit(ctx context.Context, in *VoteRequest, opts .
 	return out, nil
 }
 
-func (c *hotstuffClient) PreCommit(ctx context.Context, in *Precommit, opts ...grpc.CallOption) (*VoteRequest, error) {
-	out := new(VoteRequest)
+func (c *hotstuffClient) PreCommit(ctx context.Context, in *Precommit, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Hotstuff_PreCommit_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -102,8 +102,8 @@ func (c *hotstuffClient) PreCommit(ctx context.Context, in *Precommit, opts ...g
 	return out, nil
 }
 
-func (c *hotstuffClient) Commit(ctx context.Context, in *CommitMsg, opts ...grpc.CallOption) (*VoteRequest, error) {
-	out := new(VoteRequest)
+func (c *hotstuffClient) Commit(ctx context.Context, in *CommitMsg, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Hotstuff_Commit_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -111,8 +111,8 @@ func (c *hotstuffClient) Commit(ctx context.Context, in *CommitMsg, opts ...grpc
 	return out, nil
 }
 
-func (c *hotstuffClient) Decide(ctx context.Context, in *DecideMsg, opts ...grpc.CallOption) (*NewViewMsg, error) {
-	out := new(NewViewMsg)
+func (c *hotstuffClient) Decide(ctx context.Context, in *DecideMsg, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Hotstuff_Decide_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -120,8 +120,8 @@ func (c *hotstuffClient) Decide(ctx context.Context, in *DecideMsg, opts ...grpc
 	return out, nil
 }
 
-func (c *hotstuffClient) NewView(ctx context.Context, in *NewViewMsg, opts ...grpc.CallOption) (*Proposal, error) {
-	out := new(Proposal)
+func (c *hotstuffClient) NewView(ctx context.Context, in *NewViewMsg, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Hotstuff_NewView_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -151,14 +151,14 @@ func (c *hotstuffClient) Debug(ctx context.Context, in *DebugMsg, opts ...grpc.C
 // All implementations must embed UnimplementedHotstuffServer
 // for forward compatibility
 type HotstuffServer interface {
-	Prepare(context.Context, *Proposal) (*VoteRequest, error)
-	VotePrepare(context.Context, *VoteRequest) (*Precommit, error)
-	VotePreCommit(context.Context, *VoteRequest) (*CommitMsg, error)
-	VoteCommit(context.Context, *VoteRequest) (*DecideMsg, error)
-	PreCommit(context.Context, *Precommit) (*VoteRequest, error)
-	Commit(context.Context, *CommitMsg) (*VoteRequest, error)
-	Decide(context.Context, *DecideMsg) (*NewViewMsg, error)
-	NewView(context.Context, *NewViewMsg) (*Proposal, error)
+	Prepare(context.Context, *Proposal) (*emptypb.Empty, error)
+	VotePrepare(context.Context, *VoteRequest) (*emptypb.Empty, error)
+	VotePreCommit(context.Context, *VoteRequest) (*emptypb.Empty, error)
+	VoteCommit(context.Context, *VoteRequest) (*emptypb.Empty, error)
+	PreCommit(context.Context, *Precommit) (*emptypb.Empty, error)
+	Commit(context.Context, *CommitMsg) (*emptypb.Empty, error)
+	Decide(context.Context, *DecideMsg) (*emptypb.Empty, error)
+	NewView(context.Context, *NewViewMsg) (*emptypb.Empty, error)
 	Timeout(context.Context, *TimeoutMsg) (*emptypb.Empty, error)
 	// rpc Sync(SyncRequest) returns (SyncResponse);
 	Debug(context.Context, *DebugMsg) (*DebugMsg, error)
@@ -169,28 +169,28 @@ type HotstuffServer interface {
 type UnimplementedHotstuffServer struct {
 }
 
-func (UnimplementedHotstuffServer) Prepare(context.Context, *Proposal) (*VoteRequest, error) {
+func (UnimplementedHotstuffServer) Prepare(context.Context, *Proposal) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Prepare not implemented")
 }
-func (UnimplementedHotstuffServer) VotePrepare(context.Context, *VoteRequest) (*Precommit, error) {
+func (UnimplementedHotstuffServer) VotePrepare(context.Context, *VoteRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VotePrepare not implemented")
 }
-func (UnimplementedHotstuffServer) VotePreCommit(context.Context, *VoteRequest) (*CommitMsg, error) {
+func (UnimplementedHotstuffServer) VotePreCommit(context.Context, *VoteRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VotePreCommit not implemented")
 }
-func (UnimplementedHotstuffServer) VoteCommit(context.Context, *VoteRequest) (*DecideMsg, error) {
+func (UnimplementedHotstuffServer) VoteCommit(context.Context, *VoteRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VoteCommit not implemented")
 }
-func (UnimplementedHotstuffServer) PreCommit(context.Context, *Precommit) (*VoteRequest, error) {
+func (UnimplementedHotstuffServer) PreCommit(context.Context, *Precommit) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PreCommit not implemented")
 }
-func (UnimplementedHotstuffServer) Commit(context.Context, *CommitMsg) (*VoteRequest, error) {
+func (UnimplementedHotstuffServer) Commit(context.Context, *CommitMsg) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Commit not implemented")
 }
-func (UnimplementedHotstuffServer) Decide(context.Context, *DecideMsg) (*NewViewMsg, error) {
+func (UnimplementedHotstuffServer) Decide(context.Context, *DecideMsg) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Decide not implemented")
 }
-func (UnimplementedHotstuffServer) NewView(context.Context, *NewViewMsg) (*Proposal, error) {
+func (UnimplementedHotstuffServer) NewView(context.Context, *NewViewMsg) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NewView not implemented")
 }
 func (UnimplementedHotstuffServer) Timeout(context.Context, *TimeoutMsg) (*emptypb.Empty, error) {

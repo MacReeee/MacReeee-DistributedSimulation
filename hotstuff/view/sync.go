@@ -34,7 +34,7 @@ const (
 type SYNC struct {
 	State State
 
-	mu sync.RWMutex
+	mu sync.Mutex
 
 	CurrentView int64
 
@@ -55,7 +55,14 @@ func (s *SYNC) GetLeader(viewnumber ...int64) int32 {
 
 	//todo 测试代码
 	if d.DebugMode {
-		if s.CurrentView%2 == 0 {
+		if len(viewnumber) == 0 {
+			if s.CurrentView%2 == 0 {
+				return 2
+			} else {
+				return 1
+			}
+		}
+		if viewnumber[0]%2 == 0 {
 			return 2
 		} else {
 			return 1
@@ -101,6 +108,8 @@ func (s *SYNC) Timeout() <-chan bool {
 }
 
 func (s *SYNC) StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, NewViewMsg ...*pb.NewViewMsg) {
+	s.view.mu.Lock()
+	defer s.view.mu.Unlock()
 	if NormalMsg != nil {
 		switch msgType {
 		case pb.MsgType_PREPARE_VOTE:
@@ -122,9 +131,20 @@ func (s *SYNC) StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, NewViewM
 
 func (s *SYNC) GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *d.OnceWithDone) {
 	var (
-		voters []int32
-		sigs   [][]byte
+		voters = make([]int32, 0)
+		sigs   = make([][]byte, 0)
 	)
+	// 尝试捕获异常
+	defer func() {
+		if r := recover(); r != nil {
+			ss := s
+			log.Println("当前视图信息: ", ss)
+			log.Println("捕获到异常: ", r)
+			panic("捕获到异常")
+		}
+	}()
+	s.view.mu.Lock()
+	defer s.view.mu.Unlock()
 	switch msgType {
 	case pb.MsgType_NEW_VIEW:
 		for _, vote := range s.view.Vote.NewView {
@@ -157,9 +177,22 @@ func (s *SYNC) GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *d.OnceWithDone)
 	return nil, nil, nil
 }
 
+func (s *SYNC) GetOnce(megType pb.MsgType) *d.OnceWithDone {
+	return s.view.once[megType]
+}
+
 func (s *SYNC) HighQC() *pb.QC {
-	var highqc *pb.QC = s.view.Vote.NewView[0].Qc
-	for i := 1; i < len(s.view.Vote.NewView); i++ {
+	// 尝试捕获异常
+	defer func() {
+		if r := recover(); r != nil {
+			ss := s
+			log.Println("当前视图信息: ", ss)
+			log.Println("捕获到异常: ", r)
+			panic("捕获到异常")
+		}
+	}()
+	var highqc = &pb.QC{}
+	for i := 0; i < len(s.view.Vote.NewView); i++ {
 		if s.view.Vote.NewView[i].Qc.ViewNumber > highqc.ViewNumber {
 			highqc = s.view.Vote.NewView[i].Qc
 		}
@@ -170,6 +203,16 @@ func (s *SYNC) HighQC() *pb.QC {
 // 根据存储的投票合成一个QC，已在server中实现
 func (s *SYNC) QC(msgType pb.MsgType) *pb.QC {
 	return &pb.QC{}
+}
+
+func (s *SYNC) MU() *sync.Mutex {
+	return &s.mu
+}
+
+func (s *SYNC) ViewNumberPP() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.CurrentView++
 }
 
 func (s *SYNC) Debug() {
@@ -185,7 +228,7 @@ func (s *SYNC) Debug() {
 func NewSync() *SYNC {
 	sync := &SYNC{
 		State:       Initializing,
-		mu:          sync.RWMutex{},
+		mu:          sync.Mutex{},
 		CurrentView: 0,
 		view:        *NewView(),
 		max:         MAX_Timeout,

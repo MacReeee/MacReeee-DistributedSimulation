@@ -1,8 +1,0 @@
-[go] - 2021/06/07 21:47:38 [GradingService] - Get all...
-
-[go] - 2024/01/22 17:24:53 {
-	"ServiceName" : "Test Service",
-	"ServiceURL" : "http://localhost:5000/test2"
-}
-[go] - 2024/01/22 17:26:25 [GradingService] - get all
-

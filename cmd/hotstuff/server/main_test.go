@@ -198,47 +198,47 @@ func Test_NewView(t *testing.T) {
 	log.Println(err)
 }
 
-func Test_Server(t *testing.T) {
-	client := *hotstuff.NewReplicaClient(1)
-	signer2 := cryp.NewSignerByID(2)
-	var QC = GetValidQC(pb.MsgType_NEW_VIEW)
-	qcjson := hotstuff.QCMarshal(QC)
-	sig, _ := signer2.NormSign(qcjson)
-	NewViewMsg := &pb.NewViewMsg{
-		ProposalId: 2,
-		MsgType:    pb.MsgType_NEW_VIEW,
-		ViewNumber: 1,
-		Qc:         QC,
-		Signature:  sig, //todo应当对QC进行签名，暂时省略123
-	}
-	Proposal, err := client.NewView(context.Background(), NewViewMsg)
-	ProposalMsg := &pb.Proposal{
-		Block: Proposal.GetBlock(),
-		Qc:    Proposal.Block.GetQc(),
-		// Aggqc:      nil,
-		// ProposalId: 0,
-		Proposer:   Proposal.GetProposer(),
-		ViewNumber: Proposal.GetViewNumber(),
-		Signature:  Proposal.GetSignature(),
-		// Timestamp:  0,
-		MsgType: Proposal.GetMsgType(),
-	}
-	log.Println("NewView错误: ", err)
-	// fmt.Println(ProposalMsg)
+// func Test_Server(t *testing.T) {
+// 	client := *hotstuff.NewReplicaClient(1)
+// 	signer2 := cryp.NewSignerByID(2)
+// 	var QC = GetValidQC(pb.MsgType_NEW_VIEW)
+// 	qcjson := hotstuff.QCMarshal(QC)
+// 	sig, _ := signer2.NormSign(qcjson)
+// 	NewViewMsg := &pb.NewViewMsg{
+// 		ProposalId: 2,
+// 		MsgType:    pb.MsgType_NEW_VIEW,
+// 		ViewNumber: 1,
+// 		Qc:         QC,
+// 		Signature:  sig, //todo应当对QC进行签名，暂时省略123
+// 	}
+// 	Proposal, err := client.NewView(context.Background(), NewViewMsg)
+// 	ProposalMsg := &pb.Proposal{
+// 		Block: Proposal.GetBlock(),
+// 		Qc:    Proposal.Block.GetQc(),
+// 		// Aggqc:      nil,
+// 		// ProposalId: 0,
+// 		Proposer:   Proposal.GetProposer(),
+// 		ViewNumber: Proposal.GetViewNumber(),
+// 		Signature:  Proposal.GetSignature(),
+// 		// Timestamp:  0,
+// 		MsgType: Proposal.GetMsgType(),
+// 	}
+// 	log.Println("NewView错误: ", err)
+// 	// fmt.Println(ProposalMsg)
 
-	PrepareVoteMsg, err := client.Prepare(context.Background(), ProposalMsg)
-	log.Println("Propose错误: ", err)
-	// log.Println("消息格式：", Proposal.GetMsgType())
-	// log.Println(PrepareVoteMsg)
-	// time.Sleep(1 * time.Second)
+// 	PrepareVoteMsg, err := client.Prepare(context.Background(), ProposalMsg)
+// 	log.Println("Propose错误: ", err)
+// 	// log.Println("消息格式：", Proposal.GetMsgType())
+// 	// log.Println(PrepareVoteMsg)
+// 	// time.Sleep(1 * time.Second)
 
-	PreCommitMsg, err := client.VotePrepare(context.Background(), PrepareVoteMsg)
-	log.Println("VotePrepare错误: ", err)
-	// log.Println(PreCommitMsg.Signature)
-	/*----------------------- 以上步骤测试完毕 -----------------------*/
+// 	PreCommitMsg, err := client.VotePrepare(context.Background(), PrepareVoteMsg)
+// 	log.Println("VotePrepare错误: ", err)
+// 	// log.Println(PreCommitMsg.Signature)
+// 	/*----------------------- 以上步骤测试完毕 -----------------------*/
 
-	client.PreCommit(context.Background(), PreCommitMsg)
-}
+// 	client.PreCommit(context.Background(), PreCommitMsg)
+// }
 
 func GetValidQC(msgType pb.MsgType) *pb.QC {
 	signer1 := cryp.NewSignerByID(1)

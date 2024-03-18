@@ -12,6 +12,8 @@ import (
 	stsync "sync"
 	"time"
 
+	"google.golang.org/protobuf/types/known/emptypb"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -72,7 +74,7 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 
 	var thresh int
 	if d.DebugMode {
-		thresh = 1
+		thresh = 2
 	} else {
 		thresh = 3
 	}
@@ -107,29 +109,43 @@ func NewReplicaClient(id int32) *pb.HotstuffClient {
 	return &client
 }
 
-func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*pb.VoteRequest, error) {
-	log.Println("接收到来自 ", Proposal.Proposer, " 的提案")
+func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*emptypb.Empty, error) {
+	var (
+		sync  = modules.MODULES.Synchronizer
+		cryp  = modules.MODULES.Signer
+		chain = modules.MODULES.Chain
+	)
+	//fmt.Println("\n", "视图", *sync.ViewNumber(), "的log: ")
+	fmt.Printf("\n")
+	log.Println("接收到来自视图 ", *sync.ViewNumber()+1, "中节点 ", Proposal.Proposer, " 的提案，等待验证后进入新视图，当前视图: ", *sync.ViewNumber())
 
 	//用以控制台控制中断
 	if StopFlag {
 		wg.Add(1)
 		wg.Wait()
 	}
-	var (
-		sync  = modules.MODULES.Synchronizer
-		cryp  = modules.MODULES.Signer
-		chain = modules.MODULES.Chain
-	)
-	if ok, err := MatchingMsg(Proposal.MsgType, Proposal.ViewNumber, pb.MsgType_PREPARE, *sync.ViewNumber()); !ok {
+
+	var vn int64
+	if sync.GetLeader(Proposal.ViewNumber) == s.ID {
+		vn = *sync.ViewNumber()
+	} else {
+		vn = *sync.ViewNumber() + 1
+	}
+	if ok, err := MatchingMsg(Proposal.MsgType, Proposal.ViewNumber, pb.MsgType_PREPARE, vn); !ok {
+		log.Println("消息类型不匹配")
 		return nil, err
 	}
 	//log.Println(Proposal)
 	if !s.SafeNode(Proposal.Block, Proposal.Qc) {
+		log.Println("提案不安全")
 		return nil, fmt.Errorf("proposal is not safe")
 	}
-	//视图成功并退出
-	ViewSuccess(sync)
-	fmt.Println("\n", "视图", *sync.ViewNumber(), "的log: ")
+
+	//视图成功并退出，如果是第一个视图，视图号此时从0变为1
+	//如果不是主节点，则应该触发视图成功，主节点则在NewView中触发过
+	if sync.GetLeader(Proposal.ViewNumber) != s.ID {
+		ViewSuccess(sync)
+	}
 
 	// 临时存储区块
 	chain.StoreToTemp(Proposal.Block)
@@ -150,16 +166,20 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*pb
 
 	var leader pb.HotstuffClient
 	if d.DebugMode {
-		leader = *modules.MODULES.ReplicaClient[1]
+		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 	} else {
 		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 		log.Println("视图 ", *sync.ViewNumber(), " 的领导者是: ", sync.GetLeader())
 	}
+
+	//模拟投票处理和传输时延
+	time.Sleep(d.ProcessTime)
+
 	go leader.VotePrepare(context.Background(), PrepareVoteMsg)
-	return PrepareVoteMsg, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (*pb.Precommit, error) {
+func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (*emptypb.Empty, error) {
 	var (
 		sync = modules.MODULES.Synchronizer
 		cryp = modules.MODULES.Signer
@@ -167,18 +187,21 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (
 	)
 
 	//如果已经触发阈值条件，不在接收后续的Prepare投票
-	_, _, once := sync.GetVoter(pb.MsgType_PREPARE_VOTE)
+	//_, _, once := sync.GetVoter(pb.MsgType_PREPARE_VOTE)
+	once := sync.GetOnce(pb.MsgType_PREPARE_VOTE)
 	if once.IsDone() {
 		return nil, nil
 	}
 
-	log.Println("接收到来自 ", vote.Voter, " 的Prepare投票")
+	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的Prepare投票")
 	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb.MsgType_PREPARE_VOTE, *sync.ViewNumber()); !ok {
+		log.Println("Prepare投票 消息类型不匹配")
 		return nil, err
 	}
 	// 签名校验
 	msg := []byte(fmt.Sprintf("%d,%d,%x", vote.MsgType, vote.ViewNumber, vote.Hash))
 	if !cryp.Verify(vote.Voter, msg, vote.Signature) {
+		log.Println("prepare投票 签名验证失败")
 		return nil, fmt.Errorf("prepare vote signature is not valid")
 	}
 	sync.StoreVote(pb.MsgType_PREPARE_VOTE, vote)
@@ -187,8 +210,9 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (
 	count := s.count
 	s.mu.Unlock()
 	if count >= s.threshold { //条件达成，开始执行下一阶段
+		log.Println("视图 ", *sync.ViewNumber(), " 的Prepare投票达成阈值")
 		sync.TimerReset() //重置计时器
-		voters, sigs, once := sync.GetVoter(pb.MsgType_PREPARE_VOTE)
+		voters, sigs, _ := sync.GetVoter(pb.MsgType_PREPARE_VOTE)
 		var PreCommitMsg = &pb.Precommit{}
 		once.Do(func() { //调用其他副本的PreCommit
 			// 合成QC
@@ -214,23 +238,27 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (
 				Hash:       vote.Hash,
 				Signature:  sig,
 			}
+
+			//模拟投票处理和传输时延
+			time.Sleep(d.ProcessTime)
+
 			for _, client := range modules.MODULES.ReplicaClient {
 				go (*client).PreCommit(context.Background(), PreCommitMsg)
 			}
 			s.count = 0 //重置计数器
 		})
-		return PreCommitMsg, nil
+		return &emptypb.Empty{}, nil
 	}
-	return nil, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommit) (*pb.VoteRequest, error) {
-	log.Println("接收到来自 ", PrecommitMsg.Id, " 的PreCommit消息")
+func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommit) (*emptypb.Empty, error) {
 	var (
 		sync  = modules.MODULES.Synchronizer
 		cryp  = modules.MODULES.Signer
 		chain = modules.MODULES.Chain
 	)
+	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", PrecommitMsg.Id, " 的PreCommit消息")
 	if ok, err := MatchingMsg(PrecommitMsg.MsgType, PrecommitMsg.ViewNumber, pb.MsgType_PRE_COMMIT, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
@@ -253,15 +281,19 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommi
 	}
 	var leader pb.HotstuffClient
 	if d.DebugMode {
-		leader = *modules.MODULES.ReplicaClient[1]
+		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 	} else {
 		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 	}
+
+	//模拟投票处理和传输时延
+	time.Sleep(d.ProcessTime)
+
 	go leader.VotePreCommit(context.Background(), PreCommitVoteMsg)
-	return PreCommitVoteMsg, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest) (*pb.CommitMsg, error) {
+func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest) (*emptypb.Empty, error) {
 	var (
 		sync = modules.MODULES.Synchronizer
 		cryp = modules.MODULES.Signer
@@ -269,12 +301,13 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest)
 	)
 
 	//如果已经触发阈值条件，不在接收后续的PreCommit投票
-	_, _, once := sync.GetVoter(pb.MsgType_PRE_COMMIT_VOTE)
+	//_, _, once := sync.GetVoter(pb.MsgType_PRE_COMMIT_VOTE)
+	once := sync.GetOnce(pb.MsgType_PRE_COMMIT_VOTE)
 	if once.IsDone() {
 		return nil, nil
 	}
 
-	log.Println("接收到来自 ", vote.Voter, " 的PreCommit投票")
+	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的PreCommit投票")
 	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb.MsgType_PRE_COMMIT_VOTE, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
@@ -291,7 +324,7 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest)
 	s.mu.Unlock()
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		sync.TimerReset() //重置计时器
-		voters, sigs, once := sync.GetVoter(pb.MsgType_PRE_COMMIT_VOTE)
+		voters, sigs, _ := sync.GetVoter(pb.MsgType_PRE_COMMIT_VOTE)
 		var CommitMsg = &pb.CommitMsg{}
 		once.Do(func() { //调用其他副本的Commit
 			// 合成QC
@@ -316,23 +349,27 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest)
 				Hash:       vote.Hash,
 				Signature:  sig,
 			}
+
+			//模拟投票处理和传输时延
+			time.Sleep(d.ProcessTime)
+
 			for _, client := range modules.MODULES.ReplicaClient {
 				go (*client).Commit(context.Background(), CommitMsg)
 			}
 			s.count = 0 //重置计数器
 		})
-		return CommitMsg, nil
+		return &emptypb.Empty{}, nil
 	}
-	return nil, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb.CommitMsg) (*pb.VoteRequest, error) {
-	log.Println("接收到来自 ", CommitMsg.Id, " 的Commit消息")
+func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb.CommitMsg) (*emptypb.Empty, error) {
 	var (
 		sync = modules.MODULES.Synchronizer
 		cryp = modules.MODULES.Signer
 		// chain = modules.MODULES.Chain
 	)
+	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", CommitMsg.Id, " 的Commit消息")
 	if ok, err := MatchingMsg(CommitMsg.MsgType, CommitMsg.ViewNumber, pb.MsgType_COMMIT, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
@@ -354,24 +391,29 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb.CommitMsg) (*p
 	}
 	var leader pb.HotstuffClient
 	if d.DebugMode {
-		leader = *modules.MODULES.ReplicaClient[1]
+		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 	} else {
 		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 	}
+
+	//模拟投票处理和传输时延
+	time.Sleep(d.ProcessTime)
+
 	go leader.VoteCommit(context.Background(), CommitVoteMsg)
-	return CommitVoteMsg, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*pb.DecideMsg, error) {
+func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*emptypb.Empty, error) {
 	var (
 		sync = modules.MODULES.Synchronizer
 		cryp = modules.MODULES.Signer
 		// chain = modules.MODULES.Chain
 	)
-	log.Println("接收到来自 ", vote.Voter, " 的Commit投票")
+	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的Commit投票")
 
 	//如果已经触发阈值条件，不在接收后续的Commit投票
-	_, _, once := sync.GetVoter(pb.MsgType_COMMIT_VOTE)
+	//_, _, once := sync.GetVoter(pb.MsgType_COMMIT_VOTE)
+	once := sync.GetOnce(pb.MsgType_COMMIT_VOTE)
 	if once.IsDone() {
 		return nil, nil
 	}
@@ -391,7 +433,7 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*
 	s.mu.Unlock()
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		sync.TimerReset() //重置计时器
-		voters, sigs, once := sync.GetVoter(pb.MsgType_COMMIT_VOTE)
+		voters, sigs, _ := sync.GetVoter(pb.MsgType_COMMIT_VOTE)
 		var DecideMsg = &pb.DecideMsg{}
 		once.Do(func() { //调用其他副本的Decide
 			// 合成QC
@@ -416,23 +458,27 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*
 				Hash:       vote.Hash,
 				Signature:  sig, //暂未获取
 			}
+
+			//模拟投票处理和传输时延
+			time.Sleep(d.ProcessTime)
+
 			for _, client := range modules.MODULES.ReplicaClient {
 				go (*client).Decide(context.Background(), DecideMsg)
 			}
 			s.count = 0 //重置计数器
 		})
-		return DecideMsg, nil
+		return &emptypb.Empty{}, nil
 	}
-	return nil, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*pb.NewViewMsg, error) {
-	log.Println("接收到来自 ", DecideMsg.Id, " 的Decide消息")
+func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*emptypb.Empty, error) {
 	var (
 		sync  = modules.MODULES.Synchronizer
 		cryp  = modules.MODULES.Signer
 		chain = modules.MODULES.Chain
 	)
+	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", DecideMsg.Id, " 的Decide消息")
 	if ok, err := MatchingMsg(DecideMsg.MsgType, DecideMsg.ViewNumber, pb.MsgType_DECIDE, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
@@ -458,24 +504,28 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*p
 
 	var leader pb.HotstuffClient
 	if d.DebugMode {
-		leader = *modules.MODULES.ReplicaClient[1]
+		leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber()+1)]
 	} else {
-		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()+1]
+		leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber()+1)]
 	}
+
+	//模拟投票处理和传输时延
+	time.Sleep(d.ProcessTime)
+
 	go leader.NewView(context.Background(), NewViewMsg)
-	return NewViewMsg, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) (*pb.Proposal, error) {
+func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) (*emptypb.Empty, error) {
 	var (
 		sync  = modules.MODULES.Synchronizer
 		cryp  = modules.MODULES.Signer
 		chain = modules.MODULES.Chain
 	)
-	log.Println("接收到来自 ", NewViewMsg.Voter, " 的NewView消息")
+	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", NewViewMsg.Voter, " 的NewView消息")
 
 	//如果已经触发阈值条件，不在接收后续的NewView消息
-	_, _, once := sync.GetVoter(pb.MsgType_NEW_VIEW)
+	once := sync.GetOnce(pb.MsgType_NEW_VIEW)
 	if once.IsDone() {
 		return nil, nil
 	}
@@ -496,7 +546,6 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) 
 	s.mu.Unlock()
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		sync.TimerReset() //重置计时器
-		_, _, once := sync.GetVoter(pb.MsgType_NEW_VIEW)
 		var ProposalMsg = &pb.Proposal{}
 		once.Do(func() { //调用其他副本的Propose
 			// 获取QC
@@ -512,20 +561,33 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) 
 				// Aggqc: nil, //hotstuff中用不到
 				// ProposalId: 0, //暂未获取，未考虑清楚是否需要该字段
 				Proposer:   s.ID,
-				ViewNumber: *sync.ViewNumber(),
+				ViewNumber: *sync.ViewNumber() + 1,
 				Signature:  sig,
 				// Timestamp:  0, //暂时用不到
 				MsgType: pb.MsgType_PREPARE,
 			}
+
+			//模拟包含区块的传输时延
+			time.Sleep(d.Latency)
+
+			time.Sleep(10 * time.Millisecond)
+
+			log.Println("尝试发送视图 ", *sync.ViewNumber()+1, " 的提案 ")
+
+			// 视图成功并退出，视图成功理应在接收到Prepare消息时触发
+			// 放在此处是防止其他节点投票到来时主节点还未切换视图
+			// 对于主节点来说放在这里和放在Prepare函数中等效
+			ViewSuccess(sync)
+
 			for _, client := range modules.MODULES.ReplicaClient {
 				go (*client).Prepare(context.Background(), ProposalMsg)
 			}
 
 			s.count = 0 //重置计数器
 		})
-		return ProposalMsg, nil
+		return &emptypb.Empty{}, nil
 	}
-	return nil, nil
+	return &emptypb.Empty{}, nil
 }
 
 //如果连续失败多个视图，如何保障节点之间的视图对齐？
@@ -552,16 +614,16 @@ func NextView(s *ReplicaServer) { //所有的wait for阶段超时都会调用这
 			sig, _ := cryp.NormSign(qcjson)
 			var leader pb.HotstuffClient
 			if d.DebugMode {
-				leader = *modules.MODULES.ReplicaClient[1]
+				leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber()+1)]
 			} else {
-				leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
+				leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber()+1)]
 			}
 			NewViewMsg := &pb.NewViewMsg{
 				ProposalId: s.ID,
 				MsgType:    pb.MsgType_NEW_VIEW,
 				ViewNumber: *sync.ViewNumber(),
 				Qc:         QC,
-				Signature:  sig, //todo应当对QC进行签名，暂时省略
+				Signature:  sig,
 			}
 			leader.NewView(context.Background(), NewViewMsg)
 		}

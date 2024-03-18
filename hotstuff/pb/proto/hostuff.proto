@@ -5,15 +5,31 @@ package pb;
 import "google/protobuf/empty.proto";
 import "hotstuff/pb/proto/enums.proto";
 
+// test service
+// service hotstuff {
+//     rpc Prepare(Proposal) returns (VoteRequest);
+//     rpc VotePrepare(VoteRequest) returns (Precommit);
+//     rpc VotePreCommit(VoteRequest) returns (CommitMsg);
+//     rpc VoteCommit(VoteRequest) returns (DecideMsg);
+//     rpc PreCommit(Precommit) returns (VoteRequest);
+//     rpc Commit(CommitMsg) returns (VoteRequest);
+//     rpc Decide(DecideMsg) returns (NewViewMsg);
+//     rpc NewView(NewViewMsg) returns (Proposal);
+
+//     rpc Timeout(TimeoutMsg) returns (google.protobuf.Empty);
+//     // rpc Sync(SyncRequest) returns (SyncResponse);
+//     rpc Debug(DebugMsg) returns (DebugMsg);
+// }
+
 service hotstuff {
-    rpc Prepare(Proposal) returns (VoteRequest);
-    rpc VotePrepare(VoteRequest) returns (Precommit);
-    rpc VotePreCommit(VoteRequest) returns (CommitMsg);
-    rpc VoteCommit(VoteRequest) returns (DecideMsg);
-    rpc PreCommit(Precommit) returns (VoteRequest);
-    rpc Commit(CommitMsg) returns (VoteRequest);
-    rpc Decide(DecideMsg) returns (NewViewMsg);
-    rpc NewView(NewViewMsg) returns (Proposal);
+    rpc Prepare(Proposal) returns (google.protobuf.Empty);
+    rpc VotePrepare(VoteRequest) returns (google.protobuf.Empty);
+    rpc VotePreCommit(VoteRequest) returns (google.protobuf.Empty);
+    rpc VoteCommit(VoteRequest) returns (google.protobuf.Empty);
+    rpc PreCommit(Precommit) returns (google.protobuf.Empty);
+    rpc Commit(CommitMsg) returns (google.protobuf.Empty);
+    rpc Decide(DecideMsg) returns (google.protobuf.Empty);
+    rpc NewView(NewViewMsg) returns (google.protobuf.Empty);
 
     rpc Timeout(TimeoutMsg) returns (google.protobuf.Empty);
     // rpc Sync(SyncRequest) returns (SyncResponse);

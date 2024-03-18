@@ -4,6 +4,7 @@ import (
 	"context"
 	d "distributed/hotstuff/dependency"
 	"distributed/hotstuff/pb"
+	"sync"
 
 	"go.dedis.ch/kyber/v3"
 )
@@ -20,7 +21,10 @@ type Synchronizer interface {
 	Timeout() <-chan bool
 	StoreVote(msgType pb.MsgType, NormalMsg *pb.VoteRequest, NewViewMsg ...*pb.NewViewMsg)
 	GetVoter(msgType pb.MsgType) ([]int32, [][]byte, *d.OnceWithDone) // 返回投票者、投票信息、对应的once
+	GetOnce(megType pb.MsgType) *d.OnceWithDone
 	HighQC() *pb.QC
+	MU() *sync.Mutex
+	ViewNumberPP()
 
 	//no use
 	QC(msgType pb.MsgType) *pb.QC //合成一个QC
@@ -38,7 +42,7 @@ type Chain interface {
 	GetBlockFromTemp(hash []byte) *pb.Block
 
 	//Debug
-	GetBlockChain() (map[string]*pb.Block, map[int64]*pb.Block)
+	GetBlockChain() (map[string]*pb.Block, map[int64]*pb.Block, []*pb.Block)
 }
 type CRYP interface {
 	Sign(msgType pb.MsgType, viewnumber int64, BlockHash []byte) ([]byte, error) // 用于对投票信息 "${消息类型},${视图号},${区块hash}" 进行签名

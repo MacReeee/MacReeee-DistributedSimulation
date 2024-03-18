@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -95,7 +96,14 @@ func main() {
 					targets = append(targets, int32(id))
 				}
 			}
-			Command(cmd, targets...)
+			if cmd == "sa30" {
+				Command("sa", targets...)
+				fmt.Println("等待30s...")
+				<-time.After(30 * time.Second)
+				Command("pause", targets...)
+			} else {
+				Command(cmd, targets...)
+			}
 		}
 		fmt.Printf("\n")
 	}

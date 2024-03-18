@@ -32,6 +32,8 @@ type Blockchain struct {
 	BlockAtHeight map[int64]*pb.Block  // 存储每个高度的区块的映射表，以区块高度为键
 	// pendingFetch  map[hotstuff.Hash]context.CancelFunc
 	curHeight int64
+
+	keys []*pb.Block //记录存储的顺序
 }
 
 func NewBlockChain() *Blockchain {
@@ -40,6 +42,7 @@ func NewBlockChain() *Blockchain {
 		Blocks:        make(map[string]*pb.Block), // 初始化区块映射表
 		BlockAtHeight: make(map[int64]*pb.Block),  // 初始化高度映射表
 		curHeight:     0,                          // 初始化区块链的高度
+		keys:          []*pb.Block{},
 	}
 	blockchain.Store(GenesisBlock) // 存储创世区块
 	modules.MODULES.Chain = blockchain
@@ -48,10 +51,13 @@ func NewBlockChain() *Blockchain {
 
 // 存储区快
 func (bc *Blockchain) Store(block *pb.Block) {
-	log.Println(string(block.Hash), string(block.ParentHash))
+	//log.Println(string(block.Hash), string(block.ParentHash))
 	bc.Mut.Lock()                          // 加锁
+	block.Height = bc.curHeight            // 设置区块的高度
 	bc.Blocks[string(block.Hash)] = block  // 将区块存储到哈希映射表中
 	bc.BlockAtHeight[block.Height] = block // 将区块存储到高度映射表中
+	bc.keys = append(bc.keys, block)
+	bc.curHeight++ // 区块链的高度加一
 	//存储父区块的children字段
 	if string(block.ParentHash) != "000000000000" {
 		parent := bc.Blocks[string(block.ParentHash)]
@@ -109,7 +115,7 @@ func (chain *Blockchain) PruneBlock(block *pb.Block, NewestChild *pb.Block) []st
 		CMD        string
 		ViewNumber int64
 		Proposer   int32
-		Children   []string
+		//Children   []string
 	}
 	//将NewestChild转化成Data类型
 	data := Data{
@@ -119,7 +125,7 @@ func (chain *Blockchain) PruneBlock(block *pb.Block, NewestChild *pb.Block) []st
 		CMD:        string(NewestChild.Cmd),
 		ViewNumber: NewestChild.ViewNumber,
 		Proposer:   NewestChild.Proposer,
-		Children:   NewestChild.Children,
+		//Children:   NewestChild.Children,
 	}
 	jsonData, err := json.MarshalIndent(data, "", "    ")
 	if err != nil {
@@ -145,14 +151,14 @@ func (chain *Blockchain) PruneBlock(block *pb.Block, NewestChild *pb.Block) []st
 }
 
 func (chain *Blockchain) CreateBlock(ParentHash []byte, ViewNumber int64, QC *pb.QC, Cmd []byte, Proposer int32) *pb.Block {
-	chain.curHeight++
+	//chain.curHeight++
 	hasher := crypto.SHA256.New()
 	hasher.Write(Cmd) //区块的哈希是Cmd的哈希
 	hash := []byte(fmt.Sprintf("%x", hasher.Sum(nil)))
 	block := &pb.Block{
 		Hash:       hash,
 		ParentHash: ParentHash,
-		Height:     chain.curHeight,
+		//Height:     chain.curHeight,  //不应该在创建区块的时候设置高度，应该在存储的时候设置
 		ViewNumber: ViewNumber,
 		Qc:         QC,
 		Cmd:        Cmd,
@@ -162,8 +168,8 @@ func (chain *Blockchain) CreateBlock(ParentHash []byte, ViewNumber int64, QC *pb
 	return block
 }
 
-func (chain *Blockchain) GetBlockChain() (map[string]*pb.Block, map[int64]*pb.Block) {
-	return chain.Blocks, chain.BlockAtHeight
+func (chain *Blockchain) GetBlockChain() (map[string]*pb.Block, map[int64]*pb.Block, []*pb.Block) {
+	return chain.Blocks, chain.BlockAtHeight, chain.keys
 }
 
 func GetDebuginfo(block *pb.Block) struct {

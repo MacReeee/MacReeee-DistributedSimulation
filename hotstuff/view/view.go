@@ -4,6 +4,7 @@ import (
 	"context"
 	d "distributed/hotstuff/dependency"
 	"distributed/hotstuff/pb"
+	"sync"
 	"time"
 )
 
@@ -20,6 +21,8 @@ type vote struct {
 }
 
 type view struct {
+	mu sync.Mutex
+
 	Vote vote // 存储投票
 	once map[pb.MsgType]*d.OnceWithDone
 

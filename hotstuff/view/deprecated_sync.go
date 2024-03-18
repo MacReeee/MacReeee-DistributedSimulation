@@ -38,6 +38,19 @@ type Synchronize struct {
 	debug_count int
 }
 
+func (s *Synchronize) ViewNumberPP() {
+	panic("已弃用")
+}
+
+func (s *Synchronize) MU() *sync.Mutex {
+	panic("已弃用")
+}
+
+func (s *Synchronize) GetOnce(megType pb.MsgType) *d.OnceWithDone {
+	//不用实现，已经废弃
+	panic("已弃用")
+}
+
 // Deprecated: 该同步器实现已弃用
 func New() *Synchronize {
 	viewDuration := NewViewDuration(float64(MAX_Timeout), 1)

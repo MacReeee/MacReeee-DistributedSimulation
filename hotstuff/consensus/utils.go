@@ -17,15 +17,16 @@ func MatchingMsg(Type pb.MsgType, ViewNumber int64, TarType pb.MsgType, TarviewN
 	}
 	condition2 := (ViewNumber == TarviewNumber)
 	if !condition2 {
+		s := modules.MODULES.Synchronizer
+		log.Println(s)
 		return false, fmt.Errorf("视图号不匹配")
 	}
-	//log.Println("MatchingMsg:", condition1, condition2)
 	return condition1 && condition2, nil
 }
 
 func ViewSuccess(sync middleware.Synchronizer) {
 	_, success := sync.GetContext()
-	*sync.ViewNumber()++
+	sync.ViewNumberPP()
 	success()
 }
 
@@ -41,7 +42,7 @@ func Debug_Period_Out() {
 	var (
 		sync = modules.MODULES.Synchronizer
 		//cryp  = modules.MODULES.Signer
-		//chain = modules.MODULES.Chain
+		//chain = modules.MODULES.Chain0
 	)
 	for {
 		log.Println("当前视图: ", sync.ViewNumber())
