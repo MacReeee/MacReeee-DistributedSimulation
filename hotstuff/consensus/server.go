@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	stsync "sync"
 	"time"
@@ -21,10 +22,6 @@ import (
 var (
 	wg       stsync.WaitGroup //中断控制
 	StopFlag = false          //中断标志
-)
-
-var (
-	ReplicaNum = 4
 )
 
 type ReplicaServer struct {
@@ -74,7 +71,7 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 
 	var thresh int
 	if d.DebugMode {
-		thresh = 2
+		thresh = 3
 	} else {
 		thresh = 3
 	}
@@ -117,14 +114,18 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*em
 	)
 	//fmt.Println("\n", "视图", *sync.ViewNumber(), "的log: ")
 	fmt.Printf("\n")
-	log.Println("接收到来自视图 ", *sync.ViewNumber()+1, "中节点 ", Proposal.Proposer, " 的提案，等待验证后进入新视图，当前视图: ", *sync.ViewNumber())
+	if sync.GetLeader(Proposal.ViewNumber) != s.ID {
+		log.Println("接收到来自视图 ", *sync.ViewNumber(), "中节点 ", Proposal.Proposer, " 的提案，等待验证后进入新视图，当前视图: ", *sync.ViewNumber()-1)
+	} else {
+		log.Println("接收到来自视图 ", *sync.ViewNumber()+1, "中节点 ", Proposal.Proposer, " 的提案，等待验证后进入新视图，当前视图: ", *sync.ViewNumber())
+	}
 
 	//用以控制台控制中断
 	if StopFlag {
-		wg.Add(1)
 		wg.Wait()
 	}
 
+	// 由于主节点在NewView阶段已经触发视图成功，所以此处针对主节点视图号和普通节点分别处理
 	var vn int64
 	if sync.GetLeader(Proposal.ViewNumber) == s.ID {
 		vn = *sync.ViewNumber()
@@ -135,7 +136,6 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*em
 		log.Println("消息类型不匹配")
 		return nil, err
 	}
-	//log.Println(Proposal)
 	if !s.SafeNode(Proposal.Block, Proposal.Qc) {
 		log.Println("提案不安全")
 		return nil, fmt.Errorf("proposal is not safe")
@@ -148,7 +148,9 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*em
 	}
 
 	// 临时存储区块
-	chain.StoreToTemp(Proposal.Block)
+	if sync.GetLeader(Proposal.ViewNumber) != s.ID {
+		chain.StoreToTemp(Proposal.Block)
+	}
 
 	//对提案进行签名
 	sig, err := cryp.Sign(pb.MsgType_PREPARE_VOTE, *sync.ViewNumber(), Proposal.Block.Hash)
@@ -173,7 +175,7 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*em
 	}
 
 	//模拟投票处理和传输时延
-	time.Sleep(d.ProcessTime)
+	time.Sleep(d.GetProcessTime())
 
 	go leader.VotePrepare(context.Background(), PrepareVoteMsg)
 	return &emptypb.Empty{}, nil
@@ -240,7 +242,7 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (
 			}
 
 			//模拟投票处理和传输时延
-			time.Sleep(d.ProcessTime)
+			time.Sleep(d.GetProcessTime())
 
 			for _, client := range modules.MODULES.ReplicaClient {
 				go (*client).PreCommit(context.Background(), PreCommitMsg)
@@ -287,7 +289,7 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommi
 	}
 
 	//模拟投票处理和传输时延
-	time.Sleep(d.ProcessTime)
+	time.Sleep(d.GetProcessTime())
 
 	go leader.VotePreCommit(context.Background(), PreCommitVoteMsg)
 	return &emptypb.Empty{}, nil
@@ -351,7 +353,7 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest)
 			}
 
 			//模拟投票处理和传输时延
-			time.Sleep(d.ProcessTime)
+			time.Sleep(d.GetProcessTime())
 
 			for _, client := range modules.MODULES.ReplicaClient {
 				go (*client).Commit(context.Background(), CommitMsg)
@@ -397,7 +399,7 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb.CommitMsg) (*e
 	}
 
 	//模拟投票处理和传输时延
-	time.Sleep(d.ProcessTime)
+	time.Sleep(d.GetProcessTime())
 
 	go leader.VoteCommit(context.Background(), CommitVoteMsg)
 	return &emptypb.Empty{}, nil
@@ -460,7 +462,7 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*
 			}
 
 			//模拟投票处理和传输时延
-			time.Sleep(d.ProcessTime)
+			time.Sleep(d.GetProcessTime())
 
 			for _, client := range modules.MODULES.ReplicaClient {
 				go (*client).Decide(context.Background(), DecideMsg)
@@ -488,10 +490,22 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*e
 		log.Println("部分签名失败")
 	}
 	curViewNumber++
+
 	newestBlock := chain.GetBlock(DecideMsg.Hash)
 
 	//剪枝，并存储已经稳定上链的区块
-	chain.PruneBlock(chain.GetBlock(newestBlock.ParentHash), newestBlock)
+	parent := chain.GetBlock(newestBlock.ParentHash)
+	if parent != nil { //todo 无法定位parent可能不存在的问题，暂时用if判断
+		chain.PruneBlock(parent, newestBlock)
+	} else {
+		file, err := os.OpenFile("panic.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err != nil {
+			log.Println("无法打开panic.log文件")
+		}
+		file.WriteString("panic: runtime error: invalid memory address or nil pointer dereference\n")
+	}
+
+	chain.WriteToFile(newestBlock)
 
 	NewViewMsg := &pb.NewViewMsg{
 		ViewNumber: *sync.ViewNumber(),
@@ -510,7 +524,7 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*e
 	}
 
 	//模拟投票处理和传输时延
-	time.Sleep(d.ProcessTime)
+	time.Sleep(d.GetProcessTime())
 
 	go leader.NewView(context.Background(), NewViewMsg)
 	return &emptypb.Empty{}, nil
@@ -568,7 +582,7 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) 
 			}
 
 			//模拟包含区块的传输时延
-			time.Sleep(d.Latency)
+			time.Sleep(d.GetLatency())
 
 			time.Sleep(10 * time.Millisecond)
 
@@ -578,6 +592,9 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) 
 			// 放在此处是防止其他节点投票到来时主节点还未切换视图
 			// 对于主节点来说放在这里和放在Prepare函数中等效
 			ViewSuccess(sync)
+			// 同理，对于主节点来说存储临时区块的操作应该放在Prepare函数中
+			// 但是为了保证视图对齐，这里也存储临时区块
+			chain.StoreToTemp(block)
 
 			for _, client := range modules.MODULES.ReplicaClient {
 				go (*client).Prepare(context.Background(), ProposalMsg)

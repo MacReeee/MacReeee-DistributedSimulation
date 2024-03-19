@@ -74,6 +74,17 @@ func (bc *Blockchain) StoreToTemp(block *pb.Block) {
 
 // 给定区块的哈希，查找对应的区块
 func (bc *Blockchain) GetBlock(hash []byte) *pb.Block {
+	defer func() {
+		r := recover()
+		if r != nil {
+			c := bc
+			log.Println("当前区块链: ", c)
+			log.Println("捕获到异常: ", r)
+			panic("捕获到异常")
+		}
+	}()
+	bc.Mut.Lock()
+	defer bc.Mut.Unlock()
 	block := bc.Blocks[string(hash)]
 	return block
 }
@@ -87,7 +98,16 @@ func (bc *Blockchain) GetBlockFromTemp(hash []byte) *pb.Block {
 // 被提交的最新区块的上一个区块才需要剪枝，因此在提交区块的时候记得调用剪枝
 // 第一个参数是需要剪枝的区块，第二个参数是被提交的最新区块
 func (chain *Blockchain) PruneBlock(block *pb.Block, NewestChild *pb.Block) []string {
+	defer func() {
+		r := recover()
+		if r != nil {
+			log.Println("剪枝函数捕获到异常: ", chain)
+			panic("剪枝函数捕获到异常")
+		}
+	}()
 	var deleted []string
+	chain.Mut.Lock()
+	defer chain.Mut.Unlock()
 	for _, child := range block.Children {
 		// 如果子区块是最新区块的哈希，则跳过，不进行剪枝
 		if child == string(NewestChild.Hash) {
@@ -107,6 +127,12 @@ func (chain *Blockchain) PruneBlock(block *pb.Block, NewestChild *pb.Block) []st
 			}
 		}
 	}
+	// 返回被删除的子区块列表
+	return deleted
+}
+
+func (chain *Blockchain) WriteToFile(NewestChild *pb.Block) {
+	chain.Mut.Lock()
 	// 将NewestChild转化为json格式并存储到committed_blocks文件中
 	type Data struct {
 		ParentHash string
@@ -127,6 +153,7 @@ func (chain *Blockchain) PruneBlock(block *pb.Block, NewestChild *pb.Block) []st
 		Proposer:   NewestChild.Proposer,
 		//Children:   NewestChild.Children,
 	}
+	chain.Mut.Unlock()
 	jsonData, err := json.MarshalIndent(data, "", "    ")
 	if err != nil {
 		log.Println("json转换失败:", err)
@@ -146,8 +173,6 @@ func (chain *Blockchain) PruneBlock(block *pb.Block, NewestChild *pb.Block) []st
 	if err != nil {
 		log.Println("文件写入失败:", err)
 	}
-	// 返回被删除的子区块列表
-	return deleted
 }
 
 func (chain *Blockchain) CreateBlock(ParentHash []byte, ViewNumber int64, QC *pb.QC, Cmd []byte, Proposer int32) *pb.Block {

@@ -1,0 +1,8 @@
+{
+    "Network": {
+        "BlockSize": 1e6,
+        "Speed": 1e6,
+        "Latency": 100,
+        "ProcessTime": 20
+    }
+}

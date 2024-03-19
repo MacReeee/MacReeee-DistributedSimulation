@@ -6,7 +6,6 @@ package view
 
 import (
 	"context"
-	hotstuff "distributed/hotstuff/consensus"
 	d "distributed/hotstuff/dependency"
 	"distributed/hotstuff/modules"
 	"distributed/hotstuff/pb"
@@ -98,9 +97,9 @@ func (s *Synchronize) GetLeader(viewnumber ...int64) int32 { //如果传入了�
 	if len(viewnumber) == 0 {
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		return int32(s.CurrentView) % hotstuff.NumReplicas
+		return int32(s.CurrentView) % d.NumReplicas
 	}
-	return int32(viewnumber[0]) % hotstuff.NumReplicas
+	return int32(viewnumber[0]) % d.NumReplicas
 }
 
 func (s *Synchronize) TimerReset() bool {

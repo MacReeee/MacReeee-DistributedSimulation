@@ -2,7 +2,6 @@ package view
 
 import (
 	"context"
-	hotstuff "distributed/hotstuff/consensus"
 	d "distributed/hotstuff/dependency"
 	"distributed/hotstuff/modules"
 	"distributed/hotstuff/pb"
@@ -54,32 +53,32 @@ func (s *SYNC) GetLeader(viewnumber ...int64) int32 {
 	defer s.mu.Unlock()
 
 	//todo 测试代码
-	if d.DebugMode {
-		if len(viewnumber) == 0 {
-			if s.CurrentView%2 == 0 {
-				return 2
-			} else {
-				return 1
-			}
-		}
-		if viewnumber[0]%2 == 0 {
-			return 2
-		} else {
-			return 1
-		}
-	}
+	//if d.DebugMode {
+	//	if len(viewnumber) == 0 {
+	//		if s.CurrentView%2 == 0 {
+	//			return 2
+	//		} else {
+	//			return 1
+	//		}
+	//	}
+	//	if viewnumber[0]%2 == 0 {
+	//		return 2
+	//	} else {
+	//		return 1
+	//	}
+	//}
 
 	if len(viewnumber) == 0 {
-		leader := int32(s.CurrentView) % hotstuff.NumReplicas
+		leader := int32(s.CurrentView) % d.NumReplicas
 		if leader == 0 {
-			return hotstuff.NumReplicas
+			return d.NumReplicas
 		} else {
 			return leader
 		}
 	}
-	leader := int32(viewnumber[0]) % hotstuff.NumReplicas
+	leader := int32(viewnumber[0]) % d.NumReplicas
 	if leader == 0 {
-		return hotstuff.NumReplicas
+		return d.NumReplicas
 	} else {
 		return leader
 	}

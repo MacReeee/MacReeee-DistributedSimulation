@@ -4,6 +4,7 @@ import (
 	"distributed/hotstuff/blockchain"
 	hotstuff "distributed/hotstuff/consensus"
 	"distributed/hotstuff/cryp"
+	d "distributed/hotstuff/dependency"
 	"distributed/hotstuff/view"
 	"flag"
 	"log"
@@ -20,6 +21,7 @@ func main() { //此主函数用于启动服务端
 	idptr := flag.Int("id", 1, "replica id")
 	flag.Parse()
 	id := int32(*idptr)
+	d.ReplicaID = id
 	log.SetFlags(log.Lshortfile | log.LstdFlags)
 
 	blockchain.NewBlockChain()
@@ -27,6 +29,7 @@ func main() { //此主函数用于启动服务端
 	cryp.NewSignerByID(id)
 
 	server, listener := hotstuff.NewReplicaServer(id)
+	d.LoadFromFile() //加载配置文件
 	log.Println("副本", id, "启动成功！")
 	//go hotstuff.Debug_Period_Out()
 	server.Serve(*listener)

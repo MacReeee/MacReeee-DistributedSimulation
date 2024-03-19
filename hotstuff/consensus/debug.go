@@ -7,7 +7,6 @@ import (
 	"distributed/hotstuff/pb"
 	"fmt"
 	"log"
-	"time"
 )
 
 func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.DebugMsg, error) {
@@ -25,18 +24,6 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 	// 打印视图号
 	case "PrintViewNumber":
 		log.Println("当前视图号: ", *sync.ViewNumber())
-		return &pb.DebugMsg{}, nil
-	//测试视图成功功能
-	case "ViewSuccess":
-		_, success := sync.GetContext()
-		log.Println("当前视图号: ", sync.ViewNumber())
-		sync.Start()
-		success()
-		log.Println("调用ViewSuccess后的视图号: ", sync.ViewNumber())
-		go func() {
-			time.Sleep(15 * time.Second)
-			log.Println("15s后的视图号: ", sync.ViewNumber())
-		}()
 		return &pb.DebugMsg{}, nil
 	//启动仿真程序
 	case "StartAll", "sa":
@@ -56,6 +43,7 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 			}
 			clients := modules.MODULES.ReplicaClient
 			ViewSuccess(sync)
+			chain.StoreToTemp(block)
 			for _, client := range clients {
 				go (*client).Prepare(context.Background(), ProposalMsg)
 			}
@@ -66,7 +54,7 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 	case "ConnectToOthers", "cto":
 		var nums int
 		if d.DebugMode {
-			nums = 2
+			nums = 4
 		} else {
 			nums = 4
 		}
@@ -75,51 +63,6 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 		}
 		sync.Start()
 		return &pb.DebugMsg{}, nil
-	case "ConnectToSelfandStart":
-		NewReplicaClient(s.ID)
-		sync.Start()
-		if s.ID == 1 {
-			highQC := s.PrepareQC
-			qcjson := QCMarshal(highQC)
-			sig, _ := cryp.NormSign(qcjson)
-			cmd := []byte("CMD of View: 1")
-			block := chain.CreateBlock([]byte("FFFFFFFFFFFF"), 0, highQC, cmd, 1)
-			var ProposalMsg = &pb.Proposal{
-				Block:      block,
-				Qc:         highQC,
-				Proposer:   1,
-				ViewNumber: *sync.ViewNumber(),
-				Signature:  sig,
-				MsgType:    pb.MsgType_PREPARE,
-			}
-			clients := modules.MODULES.ReplicaClient
-			for _, client := range clients {
-				go (*client).Prepare(context.Background(), ProposalMsg)
-			}
-		}
-		return &pb.DebugMsg{Response: "已执行启动程序"}, nil
-	//测试节点之间的相互调用
-	case "CrossCall":
-		clients := modules.MODULES.ReplicaClient
-		// 初始化一个默认的成功响应
-		response := &pb.DebugMsg{Response: "所有副本调用成功"}
-
-		for i := 1; i <= 4; i++ {
-			client := clients[int32(i)]
-			if client != nil {
-				_, err := (*client).Debug(context.Background(), &pb.DebugMsg{Command: "PrintSelfID"})
-				if err != nil {
-					// 处理每个client调用的错误，这里选择了记录错误并修改响应消息
-					fmt.Printf("调用副本 %d 失败: %v\n", i, err)
-					response.Response = "至少一个副本调用失败"
-					return response, err
-				}
-			} else {
-				fmt.Printf("副本 %d 未连接\n", i)
-				return &pb.DebugMsg{Response: "侦测到网络未初始化"}, fmt.Errorf("副本 %d 未连接", i)
-			}
-		}
-		return response, nil
 	case "PrintSelfID":
 		log.Println("当前节点ID: ", s.ID)
 		return &pb.DebugMsg{}, nil
@@ -128,6 +71,7 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 		return &pb.DebugMsg{Response: "执行完毕"}, nil
 	case "pause":
 		StopFlag = true
+		wg.Add(1)
 		return &pb.DebugMsg{Response: "已暂停仿真"}, nil
 	case "resume":
 		StopFlag = false
@@ -143,6 +87,12 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 	case "syncinfo":
 		s := modules.MODULES.Synchronizer
 		log.Println("当前同步信息: ", s)
+		return &pb.DebugMsg{}, nil
+	case "load":
+		d.LoadFromFile()
+		return &pb.DebugMsg{}, nil
+	case "PrintConfig":
+		d.ReadConfig()
 		return &pb.DebugMsg{}, nil
 	default:
 		log.Println("未知的调试命令...")

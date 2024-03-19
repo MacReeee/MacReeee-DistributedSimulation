@@ -37,6 +37,7 @@ type Chain interface {
 	CreateBlock(ParentHash []byte, ViewNumber int64, QC *pb.QC, Cmd []byte, Proposer int32) *pb.Block
 	GetBlock(hash []byte) *pb.Block
 	PruneBlock(block *pb.Block, NewestChild *pb.Block) []string
+	WriteToFile(NewestChild *pb.Block)
 	Store(block *pb.Block)
 	StoreToTemp(block *pb.Block)
 	GetBlockFromTemp(hash []byte) *pb.Block
