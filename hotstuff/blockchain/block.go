@@ -61,7 +61,11 @@ func (bc *Blockchain) Store(block *pb.Block) {
 	//存储父区块的children字段
 	if string(block.ParentHash) != "000000000000" {
 		parent := bc.Blocks[string(block.ParentHash)]
-		parent.Children = append(parent.Children, string(block.Hash))
+		if parent != nil { //todo 出现nil同步区块
+			parent.Children = append(parent.Children, string(block.Hash))
+		} else {
+			writeFatalErr("出现不存在的区块，试图内步骤时序错误")
+		}
 	}
 	bc.Mut.Unlock() // 解锁
 }
@@ -74,15 +78,6 @@ func (bc *Blockchain) StoreToTemp(block *pb.Block) {
 
 // 给定区块的哈希，查找对应的区块
 func (bc *Blockchain) GetBlock(hash []byte) *pb.Block {
-	defer func() {
-		r := recover()
-		if r != nil {
-			c := bc
-			log.Println("当前区块链: ", c)
-			log.Println("捕获到异常: ", r)
-			panic("捕获到异常")
-		}
-	}()
 	bc.Mut.Lock()
 	defer bc.Mut.Unlock()
 	block := bc.Blocks[string(hash)]
@@ -98,13 +93,6 @@ func (bc *Blockchain) GetBlockFromTemp(hash []byte) *pb.Block {
 // 被提交的最新区块的上一个区块才需要剪枝，因此在提交区块的时候记得调用剪枝
 // 第一个参数是需要剪枝的区块，第二个参数是被提交的最新区块
 func (chain *Blockchain) PruneBlock(block *pb.Block, NewestChild *pb.Block) []string {
-	defer func() {
-		r := recover()
-		if r != nil {
-			log.Println("剪枝函数捕获到异常: ", chain)
-			panic("剪枝函数捕获到异常")
-		}
-	}()
 	var deleted []string
 	chain.Mut.Lock()
 	defer chain.Mut.Unlock()
@@ -197,6 +185,10 @@ func (chain *Blockchain) GetBlockChain() (map[string]*pb.Block, map[int64]*pb.Bl
 	return chain.Blocks, chain.BlockAtHeight, chain.keys
 }
 
+func (chain *Blockchain) MockSyncBlock() {
+
+}
+
 func GetDebuginfo(block *pb.Block) struct {
 	Hash       string
 	ParentHash string
@@ -207,5 +199,17 @@ func GetDebuginfo(block *pb.Block) struct {
 	}{
 		Hash:       string(block.Hash),
 		ParentHash: string(block.ParentHash),
+	}
+}
+
+func writeFatalErr(errinfo string) {
+	file, err := os.OpenFile("err.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Println("打开文件失败:", err)
+	}
+	defer file.Close()
+	_, err = file.WriteString(errinfo)
+	if err != nil {
+		log.Println("写入文件失败:", err)
 	}
 }

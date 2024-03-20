@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"strconv"
 	stsync "sync"
 	"time"
@@ -24,6 +23,14 @@ var (
 	StopFlag = false          //中断标志
 )
 
+type State string
+
+const (
+	Idle      State = "Idle"
+	Prepare   State = "Prepare"
+	PreCommit State = "PreCommit"
+)
+
 type ReplicaServer struct {
 	mu stsync.Mutex
 	// sigs      map[kyber.Point][]byte
@@ -31,6 +38,7 @@ type ReplicaServer struct {
 	threshold int
 	wg        stsync.WaitGroup
 	once      stsync.Once
+	state     State
 
 	ID        int32
 	PrepareQC *pb.QC
@@ -40,11 +48,6 @@ type ReplicaServer struct {
 }
 
 func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
-	var (
-	//sync  = modules.MODULES.Synchronizer
-	//cryp = modules.MODULES.Signer
-	//chain = modules.MODULES.Chain
-	)
 	addr := fmt.Sprintf(":%d", id+4000)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -80,6 +83,7 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 		count:     0,
 		wg:        stsync.WaitGroup{},
 		once:      stsync.Once{},
+		state:     Idle,
 		PrepareQC: PrepareQC,
 		LockedQC:  LockedQC,
 		ID:        id,
@@ -115,9 +119,9 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*em
 	//fmt.Println("\n", "视图", *sync.ViewNumber(), "的log: ")
 	fmt.Printf("\n")
 	if sync.GetLeader(Proposal.ViewNumber) != s.ID {
-		log.Println("接收到来自视图 ", *sync.ViewNumber(), "中节点 ", Proposal.Proposer, " 的提案，等待验证后进入新视图，当前视图: ", *sync.ViewNumber()-1)
-	} else {
 		log.Println("接收到来自视图 ", *sync.ViewNumber()+1, "中节点 ", Proposal.Proposer, " 的提案，等待验证后进入新视图，当前视图: ", *sync.ViewNumber())
+	} else {
+		log.Println("接收到来自视图 ", *sync.ViewNumber(), "中节点 ", Proposal.Proposer, " 的提案，等待验证后进入新视图，当前视图: ", *sync.ViewNumber()-1)
 	}
 
 	//用以控制台控制中断
@@ -268,7 +272,8 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommi
 	s.PrepareQC = PrecommitMsg.Qc //更新PrepareQC
 
 	sync.TimerReset()
-	chain.Store(chain.GetBlockFromTemp(PrecommitMsg.Hash)) // 存储这一轮的区块
+	block := chain.GetBlockFromTemp(PrecommitMsg.Hash)
+	chain.Store(block) // 存储这一轮的区块
 
 	sig, err := cryp.Sign(pb.MsgType_PRE_COMMIT_VOTE, *sync.ViewNumber(), PrecommitMsg.Hash)
 	if err != nil {
@@ -492,20 +497,19 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*e
 	curViewNumber++
 
 	newestBlock := chain.GetBlock(DecideMsg.Hash)
-
-	//剪枝，并存储已经稳定上链的区块
-	parent := chain.GetBlock(newestBlock.ParentHash)
-	if parent != nil { //todo 无法定位parent可能不存在的问题，暂时用if判断
-		chain.PruneBlock(parent, newestBlock)
-	} else {
-		file, err := os.OpenFile("panic.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-		if err != nil {
-			log.Println("无法打开panic.log文件")
+	if newestBlock != nil {
+		//剪枝，并存储已经稳定上链的区块
+		parent := chain.GetBlock(newestBlock.ParentHash)
+		if parent != nil { //todo 无法定位parent可能不存在的问题，暂时用if判断 //已解决，问题出自newestBlock可能为空，属于正常现象
+			chain.PruneBlock(parent, newestBlock)
 		}
-		file.WriteString("panic: runtime error: invalid memory address or nil pointer dereference\n")
+		chain.WriteToFile(newestBlock)
+	} else {
+		// 依照原算法，区块不存在是正常现象，可能由于节点暂时掉线产生
+		// 因此本来应该在此同步区块，但是不做区块同步对本次实验影响不大，因此不做处理
+		log.Println("区块不存在")
+		writeFatalErr(fmt.Sprintf("节点 %d 的区块不存在: %x\n，当前视图: %d", s.ID, DecideMsg.Hash, *sync.ViewNumber()))
 	}
-
-	chain.WriteToFile(newestBlock)
 
 	NewViewMsg := &pb.NewViewMsg{
 		ViewNumber: *sync.ViewNumber(),
@@ -545,6 +549,7 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) 
 	}
 
 	if ok, err := MatchingMsg(NewViewMsg.MsgType, NewViewMsg.ViewNumber, pb.MsgType_NEW_VIEW, *sync.ViewNumber()); !ok {
+		log.Println("消息类型不匹配")
 		return nil, err
 	}
 	//签名校验
