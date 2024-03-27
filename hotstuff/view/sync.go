@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	BASE_Timeout = 5 * time.Second  //基础超时时间
-	MAX_Timeout  = 20 * time.Second //最大超时时间
+	BASE_Timeout = 5000 * time.Second  //基础超时时间
+	MAX_Timeout  = 20000 * time.Second //最大超时时间
 )
 
 type State int

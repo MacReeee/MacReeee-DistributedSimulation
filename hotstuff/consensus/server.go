@@ -14,10 +14,11 @@ import (
 )
 
 func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (*emptypb.Empty, error) {
+	s.WaitForState(Prepare)
 	var (
-		sync = modules.MODULES.Synchronizer
-		cryp = modules.MODULES.Signer
-		// chain = modules.MODULES.Chain
+		sync  = modules.MODULES.Synchronizer
+		cryp  = modules.MODULES.Signer
+		chain = modules.MODULES.Chain
 	)
 
 	//如果已经触发阈值条件，不在接收后续的Prepare投票
@@ -71,6 +72,7 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (
 				Qc:         QC,
 				Hash:       vote.Hash,
 				Signature:  sig,
+				Block:      chain.GetBlock(vote.Hash),
 			}
 
 			//模拟投票处理和传输时延
@@ -87,10 +89,11 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (
 }
 
 func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest) (*emptypb.Empty, error) {
+	s.WaitForState(Precommit)
 	var (
-		sync = modules.MODULES.Synchronizer
-		cryp = modules.MODULES.Signer
-		// chain = modules.MODULES.Chain
+		sync  = modules.MODULES.Synchronizer
+		cryp  = modules.MODULES.Signer
+		chain = modules.MODULES.Chain
 	)
 
 	//如果已经触发阈值条件，不在接收后续的PreCommit投票
@@ -141,6 +144,7 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest)
 				Qc:         QC,
 				Hash:       vote.Hash,
 				Signature:  sig,
+				Block:      chain.GetBlock(vote.Hash),
 			}
 
 			//模拟投票处理和传输时延
@@ -157,10 +161,11 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest)
 }
 
 func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*emptypb.Empty, error) {
+	s.WaitForState(Commit)
 	var (
-		sync = modules.MODULES.Synchronizer
-		cryp = modules.MODULES.Signer
-		// chain = modules.MODULES.Chain
+		sync  = modules.MODULES.Synchronizer
+		cryp  = modules.MODULES.Signer
+		chain = modules.MODULES.Chain
 	)
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的Commit投票")
 
@@ -210,6 +215,7 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*
 				Qc:         QC, //暂未获取
 				Hash:       vote.Hash,
 				Signature:  sig, //暂未获取
+				Block:      chain.GetBlock(vote.Hash),
 			}
 
 			//模拟投票处理和传输时延
@@ -226,6 +232,7 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*
 }
 
 func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) (*emptypb.Empty, error) {
+	s.WaitForState(Switching)
 	var (
 		sync  = modules.MODULES.Synchronizer
 		cryp  = modules.MODULES.Signer
@@ -287,7 +294,7 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) 
 			// 视图成功并退出，视图成功理应在接收到Prepare消息时触发
 			// 放在此处是防止其他节点投票到来时主节点还未切换视图
 			// 对于主节点来说放在这里和放在Prepare函数中等效
-			ViewSuccess(sync)
+			//ViewSuccess(sync)
 			// 同理，对于主节点来说存储临时区块的操作应该放在Prepare函数中
 			// 但是为了保证视图对齐，这里也存储临时区块
 			chain.StoreToTemp(block)
@@ -312,11 +319,14 @@ func (s *ReplicaServer) NextView() { //所有的wait for阶段超时都会调用
 	for {
 		select {
 		case <-sync.Timeout():
+			s.SetState(Switching)
 			ViewSuccess(sync) //退出视图，避免同一视图一直超时无法进入下一视图
 			var QC = s.PrepareQC
 			//对QC签名作为自己的签名
-			qcjson := QCMarshal(QC)
-			sig, _ := cryp.NormSign(qcjson)
+			sig, err := cryp.Sign(pb.MsgType_NEW_VIEW, *sync.ViewNumber(), s.PrepareQC.BlockHash)
+			if err != nil {
+				log.Println("部分签名失败")
+			}
 			var leader pb.HotstuffClient
 			if d.DebugMode {
 				leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber())]
@@ -324,11 +334,13 @@ func (s *ReplicaServer) NextView() { //所有的wait for阶段超时都会调用
 				leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber())]
 			}
 			NewViewMsg := &pb.NewViewMsg{
-				ProposalId: s.ID,
-				MsgType:    pb.MsgType_NEW_VIEW,
+				// ProposalId: nil,
 				ViewNumber: *sync.ViewNumber(),
-				Qc:         QC,
+				Voter:      s.ID,
 				Signature:  sig,
+				Hash:       s.PrepareQC.BlockHash,
+				MsgType:    pb.MsgType_NEW_VIEW,
+				Qc:         QC,
 			}
 			leader.NewView(context.Background(), NewViewMsg)
 		}

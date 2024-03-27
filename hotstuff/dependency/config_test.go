@@ -24,16 +24,9 @@ func Test_ToFile(t *testing.T) {
 
 	config := Config{
 		network{
-			BlockSize:   1e6,
-			Speed:       0.5e8,
 			Latency:     100,
 			ProcessTime: 20,
 		},
-		//test_struct{
-		//	A: 1,
-		//	B: "test",
-		//	C: 3.14,
-		//},
 	}
 
 	err = encoder.Encode(config)

@@ -48,8 +48,6 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.Debu
 				MsgType:    pb.MsgType_PREPARE,
 			}
 			clients := modules.MODULES.ReplicaClient
-			ViewSuccess(sync)
-			chain.StoreToTemp(block)
 			for _, client := range clients {
 				go (*client).Prepare(context.Background(), ProposalMsg)
 			}

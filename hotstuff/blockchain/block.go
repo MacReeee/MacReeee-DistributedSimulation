@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"context"
 	"crypto"
 	"distributed/hotstuff/modules"
 	"distributed/hotstuff/pb"
@@ -81,6 +82,15 @@ func (bc *Blockchain) GetBlock(hash []byte) *pb.Block {
 	bc.Mut.Lock()
 	defer bc.Mut.Unlock()
 	block := bc.Blocks[string(hash)]
+	if block == nil {
+		for _, client := range modules.MODULES.ReplicaClient {
+			block, _ := (*client).GetBlock(context.Background(), &pb.SyncBlock{Hash: string(hash)})
+			if block != nil {
+				return block
+			}
+		}
+		log.Println("未能获取区块")
+	}
 	return block
 }
 

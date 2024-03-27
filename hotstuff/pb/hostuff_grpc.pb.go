@@ -29,6 +29,7 @@ const (
 	Hotstuff_Decide_FullMethodName        = "/pb.hotstuff/Decide"
 	Hotstuff_NewView_FullMethodName       = "/pb.hotstuff/NewView"
 	Hotstuff_Timeout_FullMethodName       = "/pb.hotstuff/Timeout"
+	Hotstuff_GetBlock_FullMethodName      = "/pb.hotstuff/GetBlock"
 	Hotstuff_Debug_FullMethodName         = "/pb.hotstuff/Debug"
 )
 
@@ -45,6 +46,7 @@ type HotstuffClient interface {
 	Decide(ctx context.Context, in *DecideMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	NewView(ctx context.Context, in *NewViewMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Timeout(ctx context.Context, in *TimeoutMsg, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetBlock(ctx context.Context, in *SyncBlock, opts ...grpc.CallOption) (*Block, error)
 	// rpc Sync(SyncRequest) returns (SyncResponse);
 	Debug(ctx context.Context, in *DebugMsg, opts ...grpc.CallOption) (*DebugMsg, error)
 }
@@ -138,6 +140,15 @@ func (c *hotstuffClient) Timeout(ctx context.Context, in *TimeoutMsg, opts ...gr
 	return out, nil
 }
 
+func (c *hotstuffClient) GetBlock(ctx context.Context, in *SyncBlock, opts ...grpc.CallOption) (*Block, error) {
+	out := new(Block)
+	err := c.cc.Invoke(ctx, Hotstuff_GetBlock_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *hotstuffClient) Debug(ctx context.Context, in *DebugMsg, opts ...grpc.CallOption) (*DebugMsg, error) {
 	out := new(DebugMsg)
 	err := c.cc.Invoke(ctx, Hotstuff_Debug_FullMethodName, in, out, opts...)
@@ -160,6 +171,7 @@ type HotstuffServer interface {
 	Decide(context.Context, *DecideMsg) (*emptypb.Empty, error)
 	NewView(context.Context, *NewViewMsg) (*emptypb.Empty, error)
 	Timeout(context.Context, *TimeoutMsg) (*emptypb.Empty, error)
+	GetBlock(context.Context, *SyncBlock) (*Block, error)
 	// rpc Sync(SyncRequest) returns (SyncResponse);
 	Debug(context.Context, *DebugMsg) (*DebugMsg, error)
 	mustEmbedUnimplementedHotstuffServer()
@@ -195,6 +207,9 @@ func (UnimplementedHotstuffServer) NewView(context.Context, *NewViewMsg) (*empty
 }
 func (UnimplementedHotstuffServer) Timeout(context.Context, *TimeoutMsg) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Timeout not implemented")
+}
+func (UnimplementedHotstuffServer) GetBlock(context.Context, *SyncBlock) (*Block, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBlock not implemented")
 }
 func (UnimplementedHotstuffServer) Debug(context.Context, *DebugMsg) (*DebugMsg, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Debug not implemented")
@@ -374,6 +389,24 @@ func _Hotstuff_Timeout_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Hotstuff_GetBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SyncBlock)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HotstuffServer).GetBlock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Hotstuff_GetBlock_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HotstuffServer).GetBlock(ctx, req.(*SyncBlock))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Hotstuff_Debug_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DebugMsg)
 	if err := dec(in); err != nil {
@@ -434,6 +467,10 @@ var Hotstuff_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Timeout",
 			Handler:    _Hotstuff_Timeout_Handler,
+		},
+		{
+			MethodName: "GetBlock",
+			Handler:    _Hotstuff_GetBlock_Handler,
 		},
 		{
 			MethodName: "Debug",

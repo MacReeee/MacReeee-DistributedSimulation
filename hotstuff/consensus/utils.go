@@ -1,6 +1,8 @@
 package hotstuff
 
 import (
+	"context"
+	d "distributed/hotstuff/dependency"
 	"distributed/hotstuff/middleware"
 	"distributed/hotstuff/modules"
 	"distributed/hotstuff/pb"
@@ -9,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
+	"net"
 	"os"
 	stsync "sync"
 )
@@ -16,9 +19,12 @@ import (
 type State string
 
 const (
-	Idle      State = "Idle"
-	Prepare   State = "Prepare"
-	PreCommit State = "PreCommit"
+	Idle        State = "Idle"
+	Prepare     State = "Prepare"
+	Precommit   State = "Precommit"
+	Commit      State = "Commit"
+	inConsensus State = "Consensusing"
+	Switching   State = "Switching"
 )
 
 func MatchingMsg(Type pb.MsgType, ViewNumber int64, TarType pb.MsgType, TarviewNumber int64) (bool, error) {
@@ -76,6 +82,7 @@ type ReplicaServer struct {
 	ID        int32
 	PrepareQC *pb.QC
 	LockedQC  *pb.QC
+	lastVote  int64
 
 	pb.UnimplementedHotstuffServer
 }
@@ -120,6 +127,7 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 		state:     Idle,
 		PrepareQC: PrepareQC,
 		LockedQC:  LockedQC,
+		lastVote:  0,
 		ID:        id,
 	}
 	replicaserver.cond = stsync.NewCond(&replicaserver.mu)
@@ -145,6 +153,11 @@ func NewReplicaClient(id int32) *pb.HotstuffClient {
 	return &client
 }
 
+func (s *ReplicaServer) GetBlock(ctx context.Context, b *pb.SyncBlock) (*pb.Block, error) {
+	chain := modules.MODULES.Chain
+	return chain.GetBlock([]byte(b.Hash)), nil
+}
+
 func (s *ReplicaServer) SafeNode(block *pb.Block, qc *pb.QC) bool {
 	condition1 := (string(block.ParentHash) == string(qc.BlockHash))         //检查是否是QC中描述的父区块的子区块
 	condition2 := (string(block.ParentHash) == string(s.LockedQC.BlockHash)) //安全性
@@ -160,9 +173,25 @@ func (s *ReplicaServer) waitForIdle() {
 	}
 }
 
+func (s *ReplicaServer) WaitForState(state State) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for s.state != state {
+		s.cond.Wait()
+	}
+}
+
 func (s *ReplicaServer) SetState(state State) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.state = state
 	s.cond.Broadcast()
+}
+
+func (s *ReplicaServer) StopVoting(viewnumber int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.lastVote < viewnumber {
+		s.lastVote = viewnumber
+	}
 }

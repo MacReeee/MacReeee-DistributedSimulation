@@ -32,8 +32,12 @@ service hotstuff {
     rpc NewView(NewViewMsg) returns (google.protobuf.Empty);
 
     rpc Timeout(TimeoutMsg) returns (google.protobuf.Empty);
+    rpc GetBlock(SyncBlock) returns (Block);
     // rpc Sync(SyncRequest) returns (SyncResponse);
     rpc Debug(DebugMsg) returns (DebugMsg);
+}
+message SyncBlock{
+    string hash =1;
 }
 
 message DebugMsg {
@@ -61,6 +65,7 @@ message Precommit {
     QC qc =4 ;
     bytes hash = 6; //区块的hash
     bytes signature = 7; //直接对接收到的消息的签名进行签名
+    Block block = 8;
 }
 
 message CommitMsg {
@@ -70,6 +75,7 @@ message CommitMsg {
     QC qc =4 ;
     bytes hash = 6; //区块的hash
     bytes signature = 7; //直接对接收到的消息的签名进行签名
+    Block block = 8;
 }
 
 message DecideMsg {
@@ -79,6 +85,7 @@ message DecideMsg {
     QC qc =4 ;
     bytes hash = 6; //区块的hash
     bytes signature = 7; //直接对接收到的消息的签名进行签名
+    Block block = 8;
 }
 
 message TimeoutMsg {
