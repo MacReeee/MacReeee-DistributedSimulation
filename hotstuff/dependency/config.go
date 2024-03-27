@@ -22,8 +22,6 @@ type Config struct {
 }
 
 type network struct {
-	BlockSize   float64       //单位：比特
-	Speed       float64       //传输速度
 	Latency     time.Duration //包含区块的传输延迟
 	ProcessTime time.Duration //投票和不含区块的处理和传输时延
 }
@@ -62,7 +60,8 @@ func ReadConfig() {
 }
 
 func GetLatency() time.Duration {
-	return time.Second * time.Duration(Configs.Network.BlockSize/Configs.Network.Speed)
+	//return time.Second * time.Duration(Configs.Network.BlockSize/Configs.Network.Speed)
+	return Configs.Network.Latency * time.Millisecond
 }
 
 func GetProcessTime() time.Duration {

@@ -110,6 +110,10 @@ func (s *Synchronize) GetContext() (context.Context, context.CancelFunc) {
 	return s.duration.GetContext(), s.duration.SuccessFunc()
 }
 
+func (s *Synchronize) GetOnly() *sync.Once {
+	panic("已弃用")
+}
+
 func (s *Synchronize) ViewNumber() *int64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()

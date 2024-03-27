@@ -1,7 +1,5 @@
 {
     "Network": {
-        "BlockSize": 0,
-        "Speed": 1e6,
         "Latency": 0,
         "ProcessTime": 0
     }

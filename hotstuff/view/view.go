@@ -23,11 +23,12 @@ type vote struct {
 type view struct {
 	mu sync.Mutex
 
-	Vote vote // 存储投票
-	once map[pb.MsgType]*d.OnceWithDone
+	Vote vote                           // 存储投票
+	once map[pb.MsgType]*d.OnceWithDone // 用于保证每个阶段只处理一次投票
 
 	ctx_success context.Context    //成功的ctx
 	success     context.CancelFunc //成功函数
+	only        *sync.Once         //用于保证试图成功函数只执行一次
 
 	timer *time.Timer //每个视图的计时器
 }
@@ -59,6 +60,7 @@ func NewView() *view {
 			CommitVoter:    []int32{},
 		},
 		once: make(map[pb.MsgType]*d.OnceWithDone),
+		only: &sync.Once{},
 	}
 	view.once[pb.MsgType_NEW_VIEW] = &d.OnceWithDone{}
 	view.once[pb.MsgType_PREPARE_VOTE] = &d.OnceWithDone{}

@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	BASE_Timeout = 5000 * time.Second  //基础超时时间
-	MAX_Timeout  = 30000 * time.Second //最大超时时间
+	BASE_Timeout = 5 * time.Second  //基础超时时间
+	MAX_Timeout  = 20 * time.Second //最大超时时间
 )
 
 type State int
@@ -52,22 +52,6 @@ func (s *SYNC) GetLeader(viewnumber ...int64) int32 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	//todo 测试代码
-	//if d.DebugMode {
-	//	if len(viewnumber) == 0 {
-	//		if s.CurrentView%2 == 0 {
-	//			return 2
-	//		} else {
-	//			return 1
-	//		}
-	//	}
-	//	if viewnumber[0]%2 == 0 {
-	//		return 2
-	//	} else {
-	//		return 1
-	//	}
-	//}
-
 	if len(viewnumber) == 0 {
 		leader := int32(s.CurrentView) % d.NumReplicas
 		if leader == 0 {
@@ -94,6 +78,9 @@ func (s *SYNC) TimerReset() bool {
 
 func (s *SYNC) GetContext() (context.Context, context.CancelFunc) {
 	return s.view.ctx_success, s.view.success
+}
+func (s *SYNC) GetOnly() *sync.Once {
+	return s.view.only
 }
 
 func (s *SYNC) ViewNumber() *int64 {

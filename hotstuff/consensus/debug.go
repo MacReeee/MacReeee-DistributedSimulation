@@ -7,6 +7,12 @@ import (
 	"distributed/hotstuff/pb"
 	"fmt"
 	"log"
+	stsync "sync"
+)
+
+var (
+	wg       stsync.WaitGroup //中断控制
+	StopFlag = false          //中断标志
 )
 
 func (s *ReplicaServer) Debug(ctx context.Context, debug *pb.DebugMsg) (*pb.DebugMsg, error) {

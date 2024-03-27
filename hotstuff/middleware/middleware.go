@@ -15,6 +15,7 @@ type Synchronizer interface {
 	// StartTimeOutTimer(ctx context.Context, timeout context.CancelFunc)
 	TimerReset() bool
 	GetContext() (context.Context, context.CancelFunc)
+	GetOnly() *sync.Once //保证视图成功函数只执行一次
 
 	//元数据
 	ViewNumber() *int64
