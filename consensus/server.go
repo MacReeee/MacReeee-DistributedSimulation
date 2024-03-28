@@ -2,9 +2,9 @@ package hotstuff
 
 import (
 	"context"
-	d "distributed/hotstuff/dependency"
-	"distributed/hotstuff/modules"
-	"distributed/hotstuff/pb"
+	d "distributed/dependency"
+	"distributed/modules"
+	pb2 "distributed/pb"
 	"fmt"
 	"log"
 	"strconv"
@@ -13,7 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (*emptypb.Empty, error) {
+func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb2.VoteRequest) (*emptypb.Empty, error) {
 	s.WaitForState(Prepare)
 	var (
 		sync  = modules.MODULES.Synchronizer
@@ -23,13 +23,13 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (
 
 	//如果已经触发阈值条件，不在接收后续的Prepare投票
 	//_, _, once := sync.GetVoter(pb.MsgType_PREPARE_VOTE)
-	once := sync.GetOnce(pb.MsgType_PREPARE_VOTE)
+	once := sync.GetOnce(pb2.MsgType_PREPARE_VOTE)
 	if once.IsDone() {
 		return nil, nil
 	}
 
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的Prepare投票")
-	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb.MsgType_PREPARE_VOTE, *sync.ViewNumber()); !ok {
+	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb2.MsgType_PREPARE_VOTE, *sync.ViewNumber()); !ok {
 		log.Println("Prepare投票 消息类型不匹配")
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (
 		log.Println("prepare投票 签名验证失败")
 		return nil, fmt.Errorf("prepare vote signature is not valid")
 	}
-	sync.StoreVote(pb.MsgType_PREPARE_VOTE, vote)
+	sync.StoreVote(pb2.MsgType_PREPARE_VOTE, vote)
 	s.mu.Lock()
 	s.count++
 	count := s.count
@@ -47,16 +47,16 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		log.Println("视图 ", *sync.ViewNumber(), " 的Prepare投票达成阈值")
 		sync.TimerReset() //重置计时器
-		voters, sigs, _ := sync.GetVoter(pb.MsgType_PREPARE_VOTE)
-		var PreCommitMsg = &pb.Precommit{}
+		voters, sigs, _ := sync.GetVoter(pb2.MsgType_PREPARE_VOTE)
+		var PreCommitMsg = &pb2.Precommit{}
 		once.Do(func() { //调用其他副本的PreCommit
 			// 合成QC
 			qc, aggpub, _ := cryp.ThreshMock(voters, sigs)
-			var QC = &pb.QC{
+			var QC = &pb2.QC{
 				BlsSignature: qc,
 				AggPubKey:    aggpub,
 				Voter:        voters,
-				MsgType:      pb.MsgType_PREPARE_VOTE,
+				MsgType:      pb2.MsgType_PREPARE_VOTE,
 				ViewNumber:   *sync.ViewNumber(),
 				BlockHash:    vote.Hash,
 			}
@@ -65,9 +65,9 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (
 			qcjson := QCMarshal(QC)
 			sig, _ := cryp.NormSign(qcjson)
 
-			PreCommitMsg = &pb.Precommit{
+			PreCommitMsg = &pb2.Precommit{
 				Id:         s.ID,
-				MsgType:    pb.MsgType_PRE_COMMIT,
+				MsgType:    pb2.MsgType_PRE_COMMIT,
 				ViewNumber: *sync.ViewNumber(),
 				Qc:         QC,
 				Hash:       vote.Hash,
@@ -88,7 +88,7 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb.VoteRequest) (
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest) (*emptypb.Empty, error) {
+func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb2.VoteRequest) (*emptypb.Empty, error) {
 	s.WaitForState(Precommit)
 	var (
 		sync  = modules.MODULES.Synchronizer
@@ -98,13 +98,13 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest)
 
 	//如果已经触发阈值条件，不在接收后续的PreCommit投票
 	//_, _, once := sync.GetVoter(pb.MsgType_PRE_COMMIT_VOTE)
-	once := sync.GetOnce(pb.MsgType_PRE_COMMIT_VOTE)
+	once := sync.GetOnce(pb2.MsgType_PRE_COMMIT_VOTE)
 	if once.IsDone() {
 		return nil, nil
 	}
 
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的PreCommit投票")
-	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb.MsgType_PRE_COMMIT_VOTE, *sync.ViewNumber()); !ok {
+	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb2.MsgType_PRE_COMMIT_VOTE, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
 	// 签名校验
@@ -113,23 +113,23 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest)
 		log.Println("Pre_Commit Vote 的签名验证失败")
 		return nil, fmt.Errorf("Pre_Commit Vote 的签名验证失败")
 	}
-	sync.StoreVote(pb.MsgType_PRE_COMMIT_VOTE, vote)
+	sync.StoreVote(pb2.MsgType_PRE_COMMIT_VOTE, vote)
 	s.mu.Lock()
 	s.count++
 	count := s.count
 	s.mu.Unlock()
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		sync.TimerReset() //重置计时器
-		voters, sigs, _ := sync.GetVoter(pb.MsgType_PRE_COMMIT_VOTE)
-		var CommitMsg = &pb.CommitMsg{}
+		voters, sigs, _ := sync.GetVoter(pb2.MsgType_PRE_COMMIT_VOTE)
+		var CommitMsg = &pb2.CommitMsg{}
 		once.Do(func() { //调用其他副本的Commit
 			// 合成QC
 			qc, aggpub, _ := cryp.ThreshMock(voters, sigs)
-			var QC = &pb.QC{
+			var QC = &pb2.QC{
 				BlsSignature: qc,
 				AggPubKey:    aggpub,
 				Voter:        voters,
-				MsgType:      pb.MsgType_PRE_COMMIT_VOTE,
+				MsgType:      pb2.MsgType_PRE_COMMIT_VOTE,
 				ViewNumber:   *sync.ViewNumber(),
 				BlockHash:    vote.Hash,
 			}
@@ -137,9 +137,9 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest)
 			// 对QC签名作为自己的签名
 			qcjson := QCMarshal(QC)
 			sig, _ := cryp.NormSign(qcjson)
-			CommitMsg = &pb.CommitMsg{
+			CommitMsg = &pb2.CommitMsg{
 				Id:         s.ID,
-				MsgType:    pb.MsgType_COMMIT,
+				MsgType:    pb2.MsgType_COMMIT,
 				ViewNumber: *sync.ViewNumber(),
 				Qc:         QC,
 				Hash:       vote.Hash,
@@ -160,7 +160,7 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb.VoteRequest)
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*emptypb.Empty, error) {
+func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb2.VoteRequest) (*emptypb.Empty, error) {
 	s.WaitForState(Commit)
 	var (
 		sync  = modules.MODULES.Synchronizer
@@ -171,12 +171,12 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*
 
 	//如果已经触发阈值条件，不在接收后续的Commit投票
 	//_, _, once := sync.GetVoter(pb.MsgType_COMMIT_VOTE)
-	once := sync.GetOnce(pb.MsgType_COMMIT_VOTE)
+	once := sync.GetOnce(pb2.MsgType_COMMIT_VOTE)
 	if once.IsDone() {
 		return nil, nil
 	}
 
-	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb.MsgType_COMMIT_VOTE, *sync.ViewNumber()); !ok {
+	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb2.MsgType_COMMIT_VOTE, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
 	// 签名校验
@@ -184,23 +184,23 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*
 	if !cryp.Verify(vote.Voter, msg, vote.Signature) {
 		return nil, fmt.Errorf("commit vote signature is not valid")
 	}
-	sync.StoreVote(pb.MsgType_COMMIT_VOTE, vote)
+	sync.StoreVote(pb2.MsgType_COMMIT_VOTE, vote)
 	s.mu.Lock()
 	s.count++
 	count := s.count
 	s.mu.Unlock()
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		sync.TimerReset() //重置计时器
-		voters, sigs, _ := sync.GetVoter(pb.MsgType_COMMIT_VOTE)
-		var DecideMsg = &pb.DecideMsg{}
+		voters, sigs, _ := sync.GetVoter(pb2.MsgType_COMMIT_VOTE)
+		var DecideMsg = &pb2.DecideMsg{}
 		once.Do(func() { //调用其他副本的Decide
 			// 合成QC
 			qc, aggpub, _ := cryp.ThreshMock(voters, sigs)
-			var QC = &pb.QC{
+			var QC = &pb2.QC{
 				BlsSignature: qc,
 				AggPubKey:    aggpub,
 				Voter:        voters,
-				MsgType:      pb.MsgType_COMMIT_VOTE,
+				MsgType:      pb2.MsgType_COMMIT_VOTE,
 				ViewNumber:   *sync.ViewNumber(),
 				BlockHash:    vote.Hash,
 			}
@@ -208,9 +208,9 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*
 			// 对QC签名作为自己的签名
 			qcjson := QCMarshal(QC)
 			sig, _ := cryp.NormSign(qcjson)
-			DecideMsg = &pb.DecideMsg{
+			DecideMsg = &pb2.DecideMsg{
 				Id:         s.ID,
-				MsgType:    pb.MsgType_DECIDE,
+				MsgType:    pb2.MsgType_DECIDE,
 				ViewNumber: *sync.ViewNumber(),
 				Qc:         QC, //暂未获取
 				Hash:       vote.Hash,
@@ -231,7 +231,7 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb.VoteRequest) (*
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) (*emptypb.Empty, error) {
+func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg) (*emptypb.Empty, error) {
 	s.WaitForState(Switching)
 	var (
 		sync  = modules.MODULES.Synchronizer
@@ -241,12 +241,12 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) 
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", NewViewMsg.Voter, " 的NewView消息")
 
 	//如果已经触发阈值条件，不在接收后续的NewView消息
-	once := sync.GetOnce(pb.MsgType_NEW_VIEW)
+	once := sync.GetOnce(pb2.MsgType_NEW_VIEW)
 	if once.IsDone() {
 		return nil, nil
 	}
 
-	if ok, err := MatchingMsg(NewViewMsg.MsgType, NewViewMsg.ViewNumber, pb.MsgType_NEW_VIEW, *sync.ViewNumber()); !ok {
+	if ok, err := MatchingMsg(NewViewMsg.MsgType, NewViewMsg.ViewNumber, pb2.MsgType_NEW_VIEW, *sync.ViewNumber()); !ok {
 		log.Println("消息类型不匹配")
 		return nil, err
 	}
@@ -256,14 +256,14 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) 
 		log.Println("NewView消息签名验证失败")
 		return nil, fmt.Errorf("newview msg signature is not valid")
 	}
-	sync.StoreVote(pb.MsgType_NEW_VIEW, nil, NewViewMsg)
+	sync.StoreVote(pb2.MsgType_NEW_VIEW, nil, NewViewMsg)
 	s.mu.Lock()
 	s.count++
 	count := s.count
 	s.mu.Unlock()
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		sync.TimerReset() //重置计时器
-		var ProposalMsg = &pb.Proposal{}
+		var ProposalMsg = &pb2.Proposal{}
 		once.Do(func() { //调用其他副本的Propose
 			// 获取QC
 			HighQC := sync.HighQC()
@@ -272,7 +272,7 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) 
 			sig, _ := cryp.NormSign(qcjson)
 			// 创建区块
 			block := chain.CreateBlock(NewViewMsg.Qc.BlockHash, *sync.ViewNumber()+1, HighQC, []byte("CMD of View: "+strconv.Itoa(int(*sync.ViewNumber()+1))), s.ID)
-			ProposalMsg = &pb.Proposal{
+			ProposalMsg = &pb2.Proposal{
 				Block: block,
 				Qc:    HighQC,
 				// Aggqc: nil, //hotstuff中用不到
@@ -281,7 +281,7 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb.NewViewMsg) 
 				ViewNumber: *sync.ViewNumber() + 1,
 				Signature:  sig,
 				// Timestamp:  0, //暂时用不到
-				MsgType: pb.MsgType_PREPARE,
+				MsgType: pb2.MsgType_PREPARE,
 			}
 
 			//模拟包含区块的传输时延
@@ -323,23 +323,23 @@ func (s *ReplicaServer) NextView() { //所有的wait for阶段超时都会调用
 			ViewSuccess(sync) //退出视图，避免同一视图一直超时无法进入下一视图
 			var QC = s.PrepareQC
 			//对QC签名作为自己的签名
-			sig, err := cryp.Sign(pb.MsgType_NEW_VIEW, *sync.ViewNumber(), s.PrepareQC.BlockHash)
+			sig, err := cryp.Sign(pb2.MsgType_NEW_VIEW, *sync.ViewNumber(), s.PrepareQC.BlockHash)
 			if err != nil {
 				log.Println("部分签名失败")
 			}
-			var leader pb.HotstuffClient
+			var leader pb2.HotstuffClient
 			if d.DebugMode {
 				leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber())]
 			} else {
 				leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber())]
 			}
-			NewViewMsg := &pb.NewViewMsg{
+			NewViewMsg := &pb2.NewViewMsg{
 				// ProposalId: nil,
 				ViewNumber: *sync.ViewNumber(),
 				Voter:      s.ID,
 				Signature:  sig,
 				Hash:       s.PrepareQC.BlockHash,
-				MsgType:    pb.MsgType_NEW_VIEW,
+				MsgType:    pb2.MsgType_NEW_VIEW,
 				Qc:         QC,
 			}
 			leader.NewView(context.Background(), NewViewMsg)

@@ -2,16 +2,16 @@ package hotstuff
 
 import (
 	"context"
-	d "distributed/hotstuff/dependency"
-	"distributed/hotstuff/modules"
-	"distributed/hotstuff/pb"
+	d "distributed/dependency"
+	"distributed/modules"
+	pb2 "distributed/pb"
 	"fmt"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	"time"
 )
 
-func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*emptypb.Empty, error) {
+func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb2.Proposal) (*emptypb.Empty, error) {
 	//用以控制台控制中断
 	if StopFlag {
 		wg.Wait()
@@ -56,20 +56,20 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*em
 	chain.Store(Proposal.Block)
 
 	//对提案进行签名
-	sig, err := cryp.Sign(pb.MsgType_PREPARE_VOTE, *sync.ViewNumber(), Proposal.Block.Hash)
+	sig, err := cryp.Sign(pb2.MsgType_PREPARE_VOTE, *sync.ViewNumber(), Proposal.Block.Hash)
 	if err != nil {
 		log.Println("部分签名失败")
 	}
-	PrepareVoteMsg := &pb.VoteRequest{
+	PrepareVoteMsg := &pb2.VoteRequest{
 		// ProposalId: Proposal.ProposalId,
 		ViewNumber: *sync.ViewNumber(),
 		Voter:      s.ID,
 		Signature:  sig,
 		Hash:       Proposal.Block.Hash,
-		MsgType:    pb.MsgType_PREPARE_VOTE,
+		MsgType:    pb2.MsgType_PREPARE_VOTE,
 	}
 
-	var leader pb.HotstuffClient
+	var leader pb2.HotstuffClient
 	if d.DebugMode {
 		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 	} else {
@@ -84,7 +84,7 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb.Proposal) (*em
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommit) (*emptypb.Empty, error) {
+func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb2.Precommit) (*emptypb.Empty, error) {
 	s.WaitForState(Prepare)
 	var (
 		sync  = modules.MODULES.Synchronizer
@@ -92,7 +92,7 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommi
 		chain = modules.MODULES.Chain
 	)
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", PrecommitMsg.Id, " 的PreCommit消息")
-	if ok, err := MatchingMsg(PrecommitMsg.MsgType, PrecommitMsg.ViewNumber, pb.MsgType_PRE_COMMIT, *sync.ViewNumber()); !ok {
+	if ok, err := MatchingMsg(PrecommitMsg.MsgType, PrecommitMsg.ViewNumber, pb2.MsgType_PRE_COMMIT, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
 
@@ -106,18 +106,18 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommi
 		chain.Store(block) // 存储这一轮的区块
 	}
 
-	sig, err := cryp.Sign(pb.MsgType_PRE_COMMIT_VOTE, *sync.ViewNumber(), PrecommitMsg.Hash)
+	sig, err := cryp.Sign(pb2.MsgType_PRE_COMMIT_VOTE, *sync.ViewNumber(), PrecommitMsg.Hash)
 	if err != nil {
 		log.Println("部分签名失败")
 	}
-	PreCommitVoteMsg := &pb.VoteRequest{
+	PreCommitVoteMsg := &pb2.VoteRequest{
 		ViewNumber: *sync.ViewNumber(),
 		Voter:      s.ID,
 		Signature:  sig,
 		Hash:       PrecommitMsg.Hash,
-		MsgType:    pb.MsgType_PRE_COMMIT_VOTE,
+		MsgType:    pb2.MsgType_PRE_COMMIT_VOTE,
 	}
-	var leader pb.HotstuffClient
+	var leader pb2.HotstuffClient
 	if d.DebugMode {
 		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 	} else {
@@ -131,7 +131,7 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb.Precommi
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb.CommitMsg) (*emptypb.Empty, error) {
+func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb2.CommitMsg) (*emptypb.Empty, error) {
 	s.WaitForState(Precommit)
 	var (
 		sync  = modules.MODULES.Synchronizer
@@ -139,7 +139,7 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb.CommitMsg) (*e
 		chain = modules.MODULES.Chain
 	)
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", CommitMsg.Id, " 的Commit消息")
-	if ok, err := MatchingMsg(CommitMsg.MsgType, CommitMsg.ViewNumber, pb.MsgType_COMMIT, *sync.ViewNumber()); !ok {
+	if ok, err := MatchingMsg(CommitMsg.MsgType, CommitMsg.ViewNumber, pb2.MsgType_COMMIT, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
 
@@ -153,18 +153,18 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb.CommitMsg) (*e
 		chain.Store(block) // 存储这一轮的区块
 	}
 
-	Sig, err := cryp.Sign(pb.MsgType_COMMIT_VOTE, *sync.ViewNumber(), CommitMsg.Hash)
+	Sig, err := cryp.Sign(pb2.MsgType_COMMIT_VOTE, *sync.ViewNumber(), CommitMsg.Hash)
 	if err != nil {
 		log.Println("部分签名失败")
 	}
-	CommitVoteMsg := &pb.VoteRequest{
+	CommitVoteMsg := &pb2.VoteRequest{
 		ViewNumber: *sync.ViewNumber(),
 		Voter:      s.ID,
 		Signature:  Sig,
 		Hash:       CommitMsg.Hash,
-		MsgType:    pb.MsgType_COMMIT_VOTE,
+		MsgType:    pb2.MsgType_COMMIT_VOTE,
 	}
-	var leader pb.HotstuffClient
+	var leader pb2.HotstuffClient
 	if d.DebugMode {
 		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 	} else {
@@ -178,7 +178,7 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb.CommitMsg) (*e
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*emptypb.Empty, error) {
+func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb2.DecideMsg) (*emptypb.Empty, error) {
 	s.WaitForState(Commit)
 	var (
 		sync  = modules.MODULES.Synchronizer
@@ -186,7 +186,7 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*e
 		chain = modules.MODULES.Chain
 	)
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", DecideMsg.Id, " 的Decide消息")
-	if ok, err := MatchingMsg(DecideMsg.MsgType, DecideMsg.ViewNumber, pb.MsgType_DECIDE, *sync.ViewNumber()); !ok {
+	if ok, err := MatchingMsg(DecideMsg.MsgType, DecideMsg.ViewNumber, pb2.MsgType_DECIDE, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
 	sync.TimerReset() //重置计时器
@@ -199,22 +199,22 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb.DecideMsg) (*e
 
 	chain.WriteToFile(block)
 
-	sig, err := cryp.Sign(pb.MsgType_NEW_VIEW, *sync.ViewNumber(), DecideMsg.Hash)
+	sig, err := cryp.Sign(pb2.MsgType_NEW_VIEW, *sync.ViewNumber(), DecideMsg.Hash)
 	if err != nil {
 		log.Println("部分签名失败")
 	}
 	curViewNumber++
 
-	NewViewMsg := &pb.NewViewMsg{
+	NewViewMsg := &pb2.NewViewMsg{
 		ViewNumber: *sync.ViewNumber(),
 		Voter:      s.ID,
 		Signature:  sig,
 		Hash:       DecideMsg.Hash,
-		MsgType:    pb.MsgType_NEW_VIEW,
+		MsgType:    pb2.MsgType_NEW_VIEW,
 		Qc:         s.PrepareQC,
 	}
 
-	var leader pb.HotstuffClient
+	var leader pb2.HotstuffClient
 	if d.DebugMode {
 		leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber()+1)]
 	} else {

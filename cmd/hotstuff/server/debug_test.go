@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	hotstuff "distributed/hotstuff/consensus"
-	"distributed/hotstuff/pb"
+	"distributed/consensus"
+	"distributed/pb"
 	"log"
 	"testing"
 )

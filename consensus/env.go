@@ -2,7 +2,7 @@
 package hotstuff
 
 import (
-	"distributed/hotstuff/pb"
+	"distributed/pb"
 
 	"go.dedis.ch/kyber/v3"
 )

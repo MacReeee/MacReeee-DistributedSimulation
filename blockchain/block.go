@@ -3,8 +3,8 @@ package blockchain
 import (
 	"context"
 	"crypto"
-	"distributed/hotstuff/modules"
-	"distributed/hotstuff/pb"
+	"distributed/modules"
+	"distributed/pb"
 	"encoding/json"
 	"fmt"
 	"log"

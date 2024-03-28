@@ -5,12 +5,12 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
-	"distributed/hotstuff/blockchain"
-	hotstuff "distributed/hotstuff/consensus"
-	"distributed/hotstuff/cryp"
-	"distributed/hotstuff/modules"
-	"distributed/hotstuff/pb"
+	"distributed/blockchain"
+	"distributed/consensus"
+	"distributed/cryp"
 	"distributed/hotstuff/view"
+	"distributed/modules"
+	pb2 "distributed/pb"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -184,12 +184,12 @@ func Example() {
 func Test_NewView(t *testing.T) {
 	client := *hotstuff.NewReplicaClient(1)
 	signer2 := cryp.NewSignerByID(2)
-	var QC = GetValidQC(pb.MsgType_NEW_VIEW)
+	var QC = GetValidQC(pb2.MsgType_NEW_VIEW)
 	qcjson := hotstuff.QCMarshal(QC)
 	sig, _ := signer2.NormSign(qcjson)
-	NewViewMsg := &pb.NewViewMsg{
+	NewViewMsg := &pb2.NewViewMsg{
 		ProposalId: 2,
-		MsgType:    pb.MsgType_NEW_VIEW,
+		MsgType:    pb2.MsgType_NEW_VIEW,
 		ViewNumber: 1,
 		Qc:         QC,
 		Signature:  sig, //todo应当对QC进行签名，暂时省略1
@@ -240,7 +240,7 @@ func Test_NewView(t *testing.T) {
 // 	client.PreCommit(context.Background(), PreCommitMsg)
 // }
 
-func GetValidQC(msgType pb.MsgType) *pb.QC {
+func GetValidQC(msgType pb2.MsgType) *pb2.QC {
 	signer1 := cryp.NewSignerByID(1)
 	signer2 := cryp.NewSignerByID(2)
 	signer3 := cryp.NewSignerByID(3)
@@ -255,7 +255,7 @@ func GetValidQC(msgType pb.MsgType) *pb.QC {
 
 	aggsig, aggpub, _ := signer2.ThreshMock([]int32{1, 2, 3, 4}, [][]byte{signature1, signature2, signature3, signature4})
 
-	var QC = &pb.QC{
+	var QC = &pb2.QC{
 		BlsSignature: aggsig,
 		AggPubKey:    aggpub,
 		Voter:        []int32{1, 2, 3, 4},
@@ -266,17 +266,17 @@ func GetValidQC(msgType pb.MsgType) *pb.QC {
 	return QC
 }
 
-func CreatePreCommitTestInput() *pb.Precommit {
+func CreatePreCommitTestInput() *pb2.Precommit {
 
 	signer2 := cryp.NewSignerByID(2)
 
-	sig, _ := signer2.Sign(pb.MsgType_PRE_COMMIT, 2, []byte("FFFFFFFFFFFF"))
+	sig, _ := signer2.Sign(pb2.MsgType_PRE_COMMIT, 2, []byte("FFFFFFFFFFFF"))
 
-	var PreCommitMsg = &pb.Precommit{
+	var PreCommitMsg = &pb2.Precommit{
 		Id:         2,
-		MsgType:    pb.MsgType_PRE_COMMIT,
+		MsgType:    pb2.MsgType_PRE_COMMIT,
 		ViewNumber: 2,
-		Qc:         GetValidQC(pb.MsgType_PRE_COMMIT),
+		Qc:         GetValidQC(pb2.MsgType_PRE_COMMIT),
 		Signature:  sig,
 	}
 	return PreCommitMsg
@@ -291,10 +291,10 @@ func Test_PreCommit(t *testing.T) {
 
 func Test_VotePreCommit(t *testing.T) {
 	signer2 := cryp.NewSignerByID(2)
-	sig, _ := signer2.Sign(pb.MsgType_PRE_COMMIT_VOTE, 1, []byte("FFFFFFFFFFFF"))
-	vote := pb.VoteRequest{
+	sig, _ := signer2.Sign(pb2.MsgType_PRE_COMMIT_VOTE, 1, []byte("FFFFFFFFFFFF"))
+	vote := pb2.VoteRequest{
 		ViewNumber: 1,
-		MsgType:    pb.MsgType_PRE_COMMIT_VOTE,
+		MsgType:    pb2.MsgType_PRE_COMMIT_VOTE,
 		Voter:      2,
 		Signature:  sig,
 		Hash:       []byte("FFFFFFFFFFFF"),
@@ -310,13 +310,13 @@ func Test_VotePreCommit(t *testing.T) {
 func Test_Commit(t *testing.T) {
 	signer2 := cryp.NewSignerByID(2)
 
-	QC := GetValidQC(pb.MsgType_COMMIT)
+	QC := GetValidQC(pb2.MsgType_COMMIT)
 	qcjson, _ := json.Marshal(QC)
 	sig, _ := signer2.NormSign(qcjson)
 
-	CommitMsg := &pb.CommitMsg{
+	CommitMsg := &pb2.CommitMsg{
 		Id:         2,
-		MsgType:    pb.MsgType_COMMIT,
+		MsgType:    pb2.MsgType_COMMIT,
 		ViewNumber: 1,
 		Qc:         QC,
 		Hash:       []byte("FFFFFFFFFFFF"),
@@ -328,15 +328,15 @@ func Test_Commit(t *testing.T) {
 	log.Println("测试Commit的错误信息如下: ", err)
 	log.Println("测试Commit的返回信息如下: ", VoteRequestMsg)
 
-	_, err = client1.Debug(context.Background(), &pb.DebugMsg{})
+	_, err = client1.Debug(context.Background(), &pb2.DebugMsg{})
 }
 
 func Test_VoteCommit(t *testing.T) {
 	signer2 := cryp.NewSignerByID(2)
-	sig, _ := signer2.Sign(pb.MsgType_COMMIT_VOTE, 1, []byte("FFFFFFFFFFFF"))
-	vote := pb.VoteRequest{
+	sig, _ := signer2.Sign(pb2.MsgType_COMMIT_VOTE, 1, []byte("FFFFFFFFFFFF"))
+	vote := pb2.VoteRequest{
 		ViewNumber: 1,
-		MsgType:    pb.MsgType_COMMIT_VOTE,
+		MsgType:    pb2.MsgType_COMMIT_VOTE,
 		Voter:      2,
 		Signature:  sig,
 		Hash:       []byte("FFFFFFFFFFFF"),
@@ -348,7 +348,7 @@ func Test_VoteCommit(t *testing.T) {
 
 func Test_Decide(t *testing.T) {
 	signer2 := cryp.NewSignerByID(2)
-	QC := GetValidQC(pb.MsgType_COMMIT)
+	QC := GetValidQC(pb2.MsgType_COMMIT)
 	qcjson, _ := json.Marshal(QC)
 	sig, _ := signer2.NormSign(qcjson)
 
@@ -356,8 +356,8 @@ func Test_Decide(t *testing.T) {
 	hasher := crypto.SHA256.New()
 	hasher.Write(cmd)
 	hash := []byte(fmt.Sprintf("%x", hasher.Sum(nil)))
-	DecideMsg := &pb.DecideMsg{
-		MsgType:    pb.MsgType_DECIDE,
+	DecideMsg := &pb2.DecideMsg{
+		MsgType:    pb2.MsgType_DECIDE,
 		ViewNumber: 1,
 		Qc:         QC,
 		Hash:       hash,

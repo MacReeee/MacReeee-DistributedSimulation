@@ -1,7 +1,7 @@
 package cryp
 
 import (
-	"distributed/hotstuff/modules"
+	"distributed/modules"
 	"encoding/base64"
 	"fmt"
 	"log"

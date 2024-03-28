@@ -1,8 +1,8 @@
 package modules
 
 import (
-	"distributed/hotstuff/middleware"
-	"distributed/hotstuff/pb"
+	"distributed/middleware"
+	"distributed/pb"
 	"encoding/json"
 
 	"google.golang.org/grpc"

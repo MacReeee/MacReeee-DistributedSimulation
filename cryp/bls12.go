@@ -2,8 +2,8 @@ package cryp
 
 import (
 	"crypto/rand"
-	"distributed/hotstuff/modules"
-	"distributed/hotstuff/pb"
+	"distributed/modules"
+	pb2 "distributed/pb"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -68,7 +68,7 @@ func NewSignerByID(ID int32) *Signer {
 }
 
 // 对 "${消息类型},${视图号},${区块hash}" 进行签名，投票和发布QC都运用此签名规则
-func (s *Signer) Sign(msgType pb.MsgType, viewnumber int64, BlockHash []byte) ([]byte, error) {
+func (s *Signer) Sign(msgType pb2.MsgType, viewnumber int64, BlockHash []byte) ([]byte, error) {
 	msg := []byte(fmt.Sprintf("%d,%d,%x", msgType, viewnumber, BlockHash))
 	return bdn.Sign(suite, s.PrivateKey, msg)
 }
@@ -141,7 +141,7 @@ func (s *Signer) ThreshMock(voter []int32, sigs [][]byte) ([]byte, []byte, error
 }
 
 // 由上所述，验证QC只需要传入收到的QC
-func (s *Signer) ThreshVerifyMock(QC *pb.QC) bool {
+func (s *Signer) ThreshVerifyMock(QC *pb2.QC) bool {
 	msg := []byte(fmt.Sprintf("%d,%d,%x", QC.MsgType, QC.ViewNumber, QC.BlockHash))
 	AggPubKey := suite.G2().Point()
 	AggPubKey.UnmarshalBinary(QC.AggPubKey)

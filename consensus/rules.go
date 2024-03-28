@@ -1,8 +1,8 @@
 package hotstuff
 
 import (
-	"distributed/hotstuff/modules"
-	"distributed/hotstuff/pb"
+	"distributed/modules"
+	"distributed/pb"
 	"log"
 )
 

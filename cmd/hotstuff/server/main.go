@@ -1,11 +1,11 @@
 package main
 
 import (
-	"distributed/hotstuff/blockchain"
-	hotstuff "distributed/hotstuff/consensus"
-	"distributed/hotstuff/cryp"
-	d "distributed/hotstuff/dependency"
-	"distributed/hotstuff/view"
+	"distributed/blockchain"
+	"distributed/consensus"
+	"distributed/cryp"
+	d "distributed/dependency"
+	"distributed/view"
 	"flag"
 	"log"
 	_ "net/http/pprof"

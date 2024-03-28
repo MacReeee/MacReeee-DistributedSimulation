@@ -3,7 +3,7 @@ package blockchain
 import (
 	"bytes"
 	"crypto"
-	"distributed/hotstuff/pb"
+	"distributed/pb"
 	"encoding/json"
 	"fmt"
 	"testing"

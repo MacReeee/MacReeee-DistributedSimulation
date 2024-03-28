@@ -2,7 +2,7 @@ package bls
 
 import (
 	"crypto/rand"
-	"distributed/hotstuff/pb"
+	"distributed/pb"
 	"fmt"
 	"io"
 

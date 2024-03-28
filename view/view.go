@@ -2,17 +2,17 @@ package view
 
 import (
 	"context"
-	d "distributed/hotstuff/dependency"
-	"distributed/hotstuff/pb"
+	d "distributed/dependency"
+	pb2 "distributed/pb"
 	"sync"
 	"time"
 )
 
 type vote struct {
-	NewView   []*pb.NewViewMsg
-	Prepare   []*pb.VoteRequest
-	PreCommit []*pb.VoteRequest
-	Commit    []*pb.VoteRequest
+	NewView   []*pb2.NewViewMsg
+	Prepare   []*pb2.VoteRequest
+	PreCommit []*pb2.VoteRequest
+	Commit    []*pb2.VoteRequest
 
 	NewViewVoter   []int32
 	PrepareVoter   []int32
@@ -23,8 +23,8 @@ type vote struct {
 type view struct {
 	mu sync.Mutex
 
-	Vote vote                           // 存储投票
-	once map[pb.MsgType]*d.OnceWithDone // 用于保证每个阶段只处理一次投票
+	Vote vote                            // 存储投票
+	once map[pb2.MsgType]*d.OnceWithDone // 用于保证每个阶段只处理一次投票
 
 	ctx_success context.Context    //成功的ctx
 	success     context.CancelFunc //成功函数
@@ -49,23 +49,23 @@ func NewView() *view {
 	ctx := context.Background()
 	view := &view{
 		Vote: vote{
-			NewView:   []*pb.NewViewMsg{},
-			Prepare:   []*pb.VoteRequest{},
-			PreCommit: []*pb.VoteRequest{},
-			Commit:    []*pb.VoteRequest{},
+			NewView:   []*pb2.NewViewMsg{},
+			Prepare:   []*pb2.VoteRequest{},
+			PreCommit: []*pb2.VoteRequest{},
+			Commit:    []*pb2.VoteRequest{},
 
 			NewViewVoter:   []int32{},
 			PrepareVoter:   []int32{},
 			PreCommitVoter: []int32{},
 			CommitVoter:    []int32{},
 		},
-		once: make(map[pb.MsgType]*d.OnceWithDone),
+		once: make(map[pb2.MsgType]*d.OnceWithDone),
 		only: &sync.Once{},
 	}
-	view.once[pb.MsgType_NEW_VIEW] = &d.OnceWithDone{}
-	view.once[pb.MsgType_PREPARE_VOTE] = &d.OnceWithDone{}
-	view.once[pb.MsgType_PRE_COMMIT_VOTE] = &d.OnceWithDone{}
-	view.once[pb.MsgType_COMMIT_VOTE] = &d.OnceWithDone{}
+	view.once[pb2.MsgType_NEW_VIEW] = &d.OnceWithDone{}
+	view.once[pb2.MsgType_PREPARE_VOTE] = &d.OnceWithDone{}
+	view.once[pb2.MsgType_PRE_COMMIT_VOTE] = &d.OnceWithDone{}
+	view.once[pb2.MsgType_COMMIT_VOTE] = &d.OnceWithDone{}
 
 	view.ctx_success, view.success = context.WithCancel(ctx)
 	return view

@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"context"
-	hotstuff "distributed/hotstuff/consensus"
-	"distributed/hotstuff/pb"
+	"distributed/consensus"
+	pb2 "distributed/pb"
 	"fmt"
 	"log"
 	"os"
@@ -45,11 +45,11 @@ func main() {
 	conns[2], _ = grpc.Dial(fmt.Sprintf(":%d", 4002), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	conns[3], _ = grpc.Dial(fmt.Sprintf(":%d", 4003), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	conns[4], _ = grpc.Dial(fmt.Sprintf(":%d", 4004), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	cons := make([]pb.HotstuffClient, 5)
-	cons[1] = pb.NewHotstuffClient(conns[1])
-	cons[2] = pb.NewHotstuffClient(conns[2])
-	cons[3] = pb.NewHotstuffClient(conns[3])
-	cons[4] = pb.NewHotstuffClient(conns[4])
+	cons := make([]pb2.HotstuffClient, 5)
+	cons[1] = pb2.NewHotstuffClient(conns[1])
+	cons[2] = pb2.NewHotstuffClient(conns[2])
+	cons[3] = pb2.NewHotstuffClient(conns[3])
+	cons[4] = pb2.NewHotstuffClient(conns[4])
 
 	all := []int32{1, 2, 3, 4}
 	for {
@@ -65,10 +65,10 @@ func main() {
 			conns[2], _ = grpc.Dial(fmt.Sprintf(":%d", 4002), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			conns[3], _ = grpc.Dial(fmt.Sprintf(":%d", 4003), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			conns[4], _ = grpc.Dial(fmt.Sprintf(":%d", 4004), grpc.WithTransportCredentials(insecure.NewCredentials()))
-			cons[1] = pb.NewHotstuffClient(conns[1])
-			cons[2] = pb.NewHotstuffClient(conns[2])
-			cons[3] = pb.NewHotstuffClient(conns[3])
-			cons[4] = pb.NewHotstuffClient(conns[4])
+			cons[1] = pb2.NewHotstuffClient(conns[1])
+			cons[2] = pb2.NewHotstuffClient(conns[2])
+			cons[3] = pb2.NewHotstuffClient(conns[3])
+			cons[4] = pb2.NewHotstuffClient(conns[4])
 			fmt.Println("重连成功")
 			continue
 		}
@@ -123,7 +123,7 @@ func Command(command string, targetid ...int32) {
 	}
 	for _, id := range targetID {
 		client := *hotstuff.NewReplicaClient(id)
-		resp, err := client.Debug(context.Background(), &pb.DebugMsg{
+		resp, err := client.Debug(context.Background(), &pb2.DebugMsg{
 			Command: command,
 		})
 		if resp != nil {
