@@ -34,8 +34,7 @@ func MatchingMsg(Type pb2.MsgType, ViewNumber int64, TarType pb2.MsgType, Tarvie
 	}
 	condition2 := (ViewNumber == TarviewNumber)
 	if !condition2 {
-		s := modules.MODULES.Synchronizer
-		log.Println(s, "\n Type:", Type, "ViewNumber:", ViewNumber, "TarType:", TarType, "TarviewNumber:", TarviewNumber)
+		log.Println("\n Type:", Type, "ViewNumber:", ViewNumber, "TarType:", TarType, "TarviewNumber:", TarviewNumber)
 		return false, fmt.Errorf("视图号不匹配")
 	}
 	return condition1 && condition2, nil

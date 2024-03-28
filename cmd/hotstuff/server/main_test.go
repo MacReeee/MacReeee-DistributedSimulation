@@ -5,11 +5,8 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha256"
-	"distributed/blockchain"
 	"distributed/consensus"
 	"distributed/cryp"
-	"distributed/hotstuff/view"
-	"distributed/modules"
 	pb2 "distributed/pb"
 	"encoding/json"
 	"fmt"
@@ -23,15 +20,6 @@ import (
 
 	"go.dedis.ch/dela/crypto/bls"
 )
-
-func Test_main(t *testing.T) {
-	modules := modules.MODULES
-	blockchain.NewBlockChain()
-	view.New()
-	cryp.NewSignerByID(1)
-	hotstuff.NewReplicaServer(1)
-	fmt.Println(modules)
-}
 
 func Test_AggregateSign(t *testing.T) {
 	signerA := bls.NewSigner()

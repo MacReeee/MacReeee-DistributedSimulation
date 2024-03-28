@@ -24,6 +24,7 @@ func (s *ReplicaServer) VoteRule(proposal *pb.Proposal) bool {
 	}
 	// Rule 2: 只给父视图大于等于锁定块视图的块投票
 	if parent.ViewNumber < s.LockedQC.ViewNumber {
+		log.Println("接收到的区块的父区块视图号小于当前锁定块视图号，拒绝投票")
 		return false
 	}
 

@@ -21,18 +21,20 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb2.VoteRequest) 
 		chain = modules.MODULES.Chain
 	)
 
-	//如果已经触发阈值条件，不在接收后续的Prepare投票
-	//_, _, once := sync.GetVoter(pb.MsgType_PREPARE_VOTE)
-	once := sync.GetOnce(pb2.MsgType_PREPARE_VOTE)
-	if once.IsDone() {
-		return nil, nil
+	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的Prepare投票")
+
+	//检查类型
+	if vote.MsgType != pb2.MsgType_PREPARE_VOTE {
+		log.Println("Prepare投票 消息类型不匹配")
+		return &emptypb.Empty{}, fmt.Errorf("prepare vote type is not valid")
 	}
 
-	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的Prepare投票")
-	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb2.MsgType_PREPARE_VOTE, *sync.ViewNumber()); !ok {
-		log.Println("Prepare投票 消息类型不匹配")
-		return nil, err
+	//判断视图号
+	if vote.ViewNumber < *sync.ViewNumber() {
+		log.Println("Prepare投票过旧")
+		return &emptypb.Empty{}, fmt.Errorf("prepare vote view number is not valid")
 	}
+
 	// 签名校验
 	msg := []byte(fmt.Sprintf("%d,%d,%x", vote.MsgType, vote.ViewNumber, vote.Hash))
 	if !cryp.Verify(vote.Voter, msg, vote.Signature) {
@@ -43,6 +45,7 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb2.VoteRequest) 
 	s.mu.Lock()
 	s.count++
 	count := s.count
+	once := sync.GetOnce(pb2.MsgType_PREPARE_VOTE)
 	s.mu.Unlock()
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		log.Println("视图 ", *sync.ViewNumber(), " 的Prepare投票达成阈值")
@@ -271,7 +274,10 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 			qcjson := QCMarshal(HighQC)
 			sig, _ := cryp.NormSign(qcjson)
 			// 创建区块
-			block := chain.CreateBlock(NewViewMsg.Qc.BlockHash, *sync.ViewNumber()+1, HighQC, []byte("CMD of View: "+strconv.Itoa(int(*sync.ViewNumber()+1))), s.ID)
+			block := chain.CreateBlock(HighQC.BlockHash, *sync.ViewNumber()+1, HighQC, []byte("CMD of View: "+strconv.Itoa(int(*sync.ViewNumber()+1))), s.ID)
+			if HighQC.ViewNumber+1 < *sync.ViewNumber() {
+				log.Println("高QC的视图号小于当前视图号")
+			}
 			ProposalMsg = &pb2.Proposal{
 				Block: block,
 				Qc:    HighQC,

@@ -158,7 +158,7 @@ func (chain *Blockchain) WriteToFile(NewestChild *pb.Block) {
 	}
 	// 分不同节点不同文件存储
 	serverID := int(modules.MODULES.ReplicaServerStruct.SelfID())
-	file, err := os.OpenFile("./committed_blocks"+strconv.Itoa(serverID)+".json", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	file, err := os.OpenFile("./output/replica_"+strconv.Itoa(serverID)+"_committed.json", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		log.Println("文件打开失败:", err)
 	}

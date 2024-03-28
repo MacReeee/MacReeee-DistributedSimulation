@@ -47,7 +47,7 @@ func (v *view) Duration(s *SYNC) time.Duration {
 
 func NewView() *view {
 	ctx := context.Background()
-	view := &view{
+	v := &view{
 		Vote: vote{
 			NewView:   []*pb2.NewViewMsg{},
 			Prepare:   []*pb2.VoteRequest{},
@@ -62,13 +62,13 @@ func NewView() *view {
 		once: make(map[pb2.MsgType]*d.OnceWithDone),
 		only: &sync.Once{},
 	}
-	view.once[pb2.MsgType_NEW_VIEW] = &d.OnceWithDone{}
-	view.once[pb2.MsgType_PREPARE_VOTE] = &d.OnceWithDone{}
-	view.once[pb2.MsgType_PRE_COMMIT_VOTE] = &d.OnceWithDone{}
-	view.once[pb2.MsgType_COMMIT_VOTE] = &d.OnceWithDone{}
+	v.once[pb2.MsgType_NEW_VIEW] = &d.OnceWithDone{}
+	v.once[pb2.MsgType_PREPARE_VOTE] = &d.OnceWithDone{}
+	v.once[pb2.MsgType_PRE_COMMIT_VOTE] = &d.OnceWithDone{}
+	v.once[pb2.MsgType_COMMIT_VOTE] = &d.OnceWithDone{}
 
-	view.ctx_success, view.success = context.WithCancel(ctx)
-	return view
+	v.ctx_success, v.success = context.WithCancel(ctx)
+	return v
 }
 
 func (v *view) SuccessFunc() context.CancelFunc {

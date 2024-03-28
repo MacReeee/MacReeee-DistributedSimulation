@@ -3,7 +3,7 @@ option go_package="./pb";
 package pb;
 
 import "google/protobuf/empty.proto";
-import "hotstuff/pb/proto/enums.proto";
+import "pb/proto/enums.proto";
 
 // test service
 // service hotstuff {
