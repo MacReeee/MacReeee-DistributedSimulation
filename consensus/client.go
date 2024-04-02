@@ -70,12 +70,9 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb2.Proposal) (*e
 	}
 
 	var leader pb2.HotstuffClient
-	if d.DebugMode {
-		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
-	} else {
-		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
-		log.Println("视图 ", *sync.ViewNumber(), " 的领导者是: ", sync.GetLeader())
-	}
+	leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
+
+	log.Println("视图 ", *sync.ViewNumber(), " 的领导者是: ", sync.GetLeader())
 
 	//模拟投票处理和传输时延
 	time.Sleep(d.GetProcessTime())
@@ -118,11 +115,7 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb2.Precomm
 		MsgType:    pb2.MsgType_PRE_COMMIT_VOTE,
 	}
 	var leader pb2.HotstuffClient
-	if d.DebugMode {
-		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
-	} else {
-		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
-	}
+	leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 
 	//模拟投票处理和传输时延
 	time.Sleep(d.GetProcessTime())
@@ -165,11 +158,7 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb2.CommitMsg) (*
 		MsgType:    pb2.MsgType_COMMIT_VOTE,
 	}
 	var leader pb2.HotstuffClient
-	if d.DebugMode {
-		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
-	} else {
-		leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
-	}
+	leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 
 	//模拟投票处理和传输时延
 	time.Sleep(d.GetProcessTime())
@@ -215,11 +204,7 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb2.DecideMsg) (*
 	}
 
 	var leader pb2.HotstuffClient
-	if d.DebugMode {
-		leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber()+1)]
-	} else {
-		leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber()+1)]
-	}
+	leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber()+1)]
 
 	//模拟投票处理和传输时延
 	time.Sleep(d.GetProcessTime())

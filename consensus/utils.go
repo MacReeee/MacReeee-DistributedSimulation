@@ -113,7 +113,7 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 
 	var thresh int
 	if d.DebugMode {
-		thresh = 3
+		thresh = 2
 	} else {
 		thresh = 3
 	}

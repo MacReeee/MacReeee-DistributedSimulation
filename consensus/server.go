@@ -326,7 +326,9 @@ func (s *ReplicaServer) NextView() { //所有的wait for阶段超时都会调用
 		select {
 		case <-sync.Timeout():
 			s.SetState(Switching)
-			ViewSuccess(sync) //退出视图，避免同一视图一直超时无法进入下一视图
+			ViewNow := *sync.ViewNumber()
+			ViewNow++
+			//ViewSuccess(sync) //退出视图，避免同一视图一直超时无法进入下一视图
 			var QC = s.PrepareQC
 			//对QC签名作为自己的签名
 			sig, err := cryp.Sign(pb2.MsgType_NEW_VIEW, *sync.ViewNumber(), s.PrepareQC.BlockHash)
@@ -334,14 +336,10 @@ func (s *ReplicaServer) NextView() { //所有的wait for阶段超时都会调用
 				log.Println("部分签名失败")
 			}
 			var leader pb2.HotstuffClient
-			if d.DebugMode {
-				leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber())]
-			} else {
-				leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber())]
-			}
+			leader = *modules.MODULES.ReplicaClient[sync.GetLeader(ViewNow)]
 			NewViewMsg := &pb2.NewViewMsg{
 				// ProposalId: nil,
-				ViewNumber: *sync.ViewNumber(),
+				ViewNumber: ViewNow,
 				Voter:      s.ID,
 				Signature:  sig,
 				Hash:       s.PrepareQC.BlockHash,

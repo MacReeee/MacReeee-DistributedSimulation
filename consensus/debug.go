@@ -23,16 +23,16 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 	)
 	fmt.Printf("\n接收到调试指令: %v\n", debug.Command)
 	switch debug.Command {
-	//打印区块链
-	case "PrintBlocks":
-		PrintChain()
-		return &pb2.DebugMsg{}, nil
+	////打印区块链
+	//case "PrintBlocks":
+	//	PrintChain()
+	//	return &pb2.DebugMsg{}, nil
 	// 打印视图号
 	case "PrintViewNumber":
 		log.Println("当前视图号: ", *sync.ViewNumber())
 		return &pb2.DebugMsg{}, nil
 	//启动仿真程序
-	case "StartAll", "sa":
+	case "StartAll", "sa", "启动":
 		if s.ID == 1 {
 			s.SetState(Switching)
 			highQC := s.PrepareQC
@@ -57,10 +57,10 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 		s.SetState(Switching)
 		return &pb2.DebugMsg{}, nil
 	//控制节点连接其他节点
-	case "ConnectToOthers", "cto":
+	case "ConnectToOthers", "cto", "原神":
 		var nums int
 		if d.DebugMode {
-			nums = 4
+			nums = 2
 		} else {
 			nums = 4
 		}
@@ -68,6 +68,15 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 			NewReplicaClient(int32(i))
 		}
 		sync.Start()
+		return &pb2.DebugMsg{}, nil
+	case "TestTimeoutStart", "tts":
+		log.Printf("启动视图计时器，等待超时\n")
+		s.SetState(Switching)
+		sync.Start()
+		return &pb2.DebugMsg{}, nil
+	case "ViewNumpp", "vpp":
+		sync.ViewNumberPP()
+		log.Println("视图号+1")
 		return &pb2.DebugMsg{}, nil
 	case "PrintSelfID":
 		log.Println("当前节点ID: ", s.ID)
@@ -106,26 +115,26 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 	}
 }
 
-func PrintChain() {
-	var (
-		// sync  = modules.MODULES.Synchronizer
-		// cryp  = modules.MODULES.Signer
-		chain = modules.MODULES.Chain
-	)
-	_, _, keys := chain.GetBlockChain()
-
-	var i = 0
-	for _, block := range keys {
-		fmt.Printf("\n区块 %d 的信息:\n", i)
-
-		fmt.Println("区块Hash:\t", string(block.Hash))
-		fmt.Println("父Hash:\t\t", string(block.ParentHash))
-		fmt.Println("区块高度:\t", block.Height)
-		fmt.Println("子区块的Hash:\t", block.Children)
-		fmt.Println("区块的内容:\t", string(block.Cmd), "\n")
-		i++
-	}
-}
+//func PrintChain() {
+//	var (
+//		// sync  = modules.MODULES.Synchronizer
+//		// cryp  = modules.MODULES.Signer
+//		chain = modules.MODULES.Chain
+//	)
+//	_, _, keys := chain.GetBlockChain()
+//
+//	var i = 0
+//	for _, block := range keys {
+//		fmt.Printf("\n区块 %d 的信息:\n", i)
+//
+//		fmt.Println("区块Hash:\t", string(block.Hash))
+//		fmt.Println("父Hash:\t\t", string(block.ParentHash))
+//		fmt.Println("区块高度:\t", block.Height)
+//		fmt.Println("子区块的Hash:\t", block.Children)
+//		fmt.Println("区块的内容:\t", string(block.Cmd), "\n")
+//		i++
+//	}
+//}
 
 func (s *ReplicaServer) SelfID() int32 {
 	return s.ID

@@ -44,7 +44,7 @@ type Chain interface {
 	GetBlockFromTemp(hash []byte) *pb2.Block
 
 	//Debug
-	GetBlockChain() (map[string]*pb2.Block, map[int64]*pb2.Block, []*pb2.Block)
+	GetBlockChain() (map[string]*pb2.Block, map[int64]*pb2.Block)
 }
 type CRYP interface {
 	Sign(msgType pb2.MsgType, viewnumber int64, BlockHash []byte) ([]byte, error) // 用于对投票信息 "${消息类型},${视图号},${区块hash}" 进行签名

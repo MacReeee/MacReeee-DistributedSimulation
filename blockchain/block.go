@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 )
 
 var GenesisBlock = &pb.Block{
@@ -34,7 +35,7 @@ type Blockchain struct {
 	// pendingFetch  map[hotstuff.Hash]context.CancelFunc
 	curHeight int64
 
-	keys []*pb.Block //记录存储的顺序
+	//keys []*pb.Block //记录存储的顺序
 }
 
 func NewBlockChain() *Blockchain {
@@ -43,7 +44,7 @@ func NewBlockChain() *Blockchain {
 		Blocks:        make(map[string]*pb.Block), // 初始化区块映射表
 		BlockAtHeight: make(map[int64]*pb.Block),  // 初始化高度映射表
 		curHeight:     0,                          // 初始化区块链的高度
-		keys:          []*pb.Block{},
+		//keys:          []*pb.Block{},
 	}
 	blockchain.Store(GenesisBlock) // 存储创世区块
 	modules.MODULES.Chain = blockchain
@@ -57,7 +58,7 @@ func (bc *Blockchain) Store(block *pb.Block) {
 	block.Height = bc.curHeight            // 设置区块的高度
 	bc.Blocks[string(block.Hash)] = block  // 将区块存储到哈希映射表中
 	bc.BlockAtHeight[block.Height] = block // 将区块存储到高度映射表中
-	bc.keys = append(bc.keys, block)
+	//bc.keys = append(bc.keys, block)
 	bc.curHeight++ // 区块链的高度加一
 	//存储父区块的children字段
 	if string(block.ParentHash) != "000000000000" {
@@ -68,7 +69,20 @@ func (bc *Blockchain) Store(block *pb.Block) {
 			writeFatalErr("出现不存在的区块，试图内步骤时序错误")
 		}
 	}
+	bc.DeleteBlock1000(block.Height)
 	bc.Mut.Unlock() // 解锁
+}
+
+// 存储区块时删除10000高度之前的区块，减小内存占用
+func (bc *Blockchain) DeleteBlock1000(H int64) {
+	Height := H - 1000
+	block := bc.BlockAtHeight[Height]
+	if block == nil {
+		return
+	}
+	hash := string(block.Hash)
+	delete(bc.Blocks, hash)
+	delete(bc.BlockAtHeight, Height)
 }
 
 func (bc *Blockchain) StoreToTemp(block *pb.Block) {
@@ -139,6 +153,7 @@ func (chain *Blockchain) WriteToFile(NewestChild *pb.Block) {
 		CMD        string
 		ViewNumber int64
 		Proposer   int32
+		Time       time.Time
 		//Children   []string
 	}
 	//将NewestChild转化成Data类型
@@ -149,6 +164,7 @@ func (chain *Blockchain) WriteToFile(NewestChild *pb.Block) {
 		CMD:        string(NewestChild.Cmd),
 		ViewNumber: NewestChild.ViewNumber,
 		Proposer:   NewestChild.Proposer,
+		Time:       time.Now(),
 		//Children:   NewestChild.Children,
 	}
 	chain.Mut.Unlock()
@@ -191,8 +207,8 @@ func (chain *Blockchain) CreateBlock(ParentHash []byte, ViewNumber int64, QC *pb
 	return block
 }
 
-func (chain *Blockchain) GetBlockChain() (map[string]*pb.Block, map[int64]*pb.Block, []*pb.Block) {
-	return chain.Blocks, chain.BlockAtHeight, chain.keys
+func (chain *Blockchain) GetBlockChain() (map[string]*pb.Block, map[int64]*pb.Block) {
+	return chain.Blocks, chain.BlockAtHeight
 }
 
 func (chain *Blockchain) MockSyncBlock() {
