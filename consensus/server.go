@@ -249,10 +249,16 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 		return nil, nil
 	}
 
-	if ok, err := MatchingMsg(NewViewMsg.MsgType, NewViewMsg.ViewNumber, pb2.MsgType_NEW_VIEW, *sync.ViewNumber()); !ok {
-		log.Println("消息类型不匹配")
-		return nil, err
+	if NewViewMsg.MsgType != pb2.MsgType_NEW_VIEW {
+		log.Println("NewView消息类型不匹配")
+		return nil, fmt.Errorf("newview msg type is not valid")
 	}
+
+	if sync.GetLeader(NewViewMsg.ViewNumber) != s.ID {
+		log.Println("不是当前视图的领导者")
+		return nil, fmt.Errorf("not the leader of this view")
+	}
+
 	//签名校验
 	msg := []byte(fmt.Sprintf("%d,%d,%x", NewViewMsg.MsgType, NewViewMsg.ViewNumber, NewViewMsg.Hash))
 	if !cryp.Verify(NewViewMsg.Voter, msg, NewViewMsg.Signature) {
@@ -274,10 +280,8 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 			qcjson := QCMarshal(HighQC)
 			sig, _ := cryp.NormSign(qcjson)
 			// 创建区块
-			block := chain.CreateBlock(HighQC.BlockHash, *sync.ViewNumber()+1, HighQC, []byte("CMD of View: "+strconv.Itoa(int(*sync.ViewNumber()+1))), s.ID)
-			if HighQC.ViewNumber+1 < *sync.ViewNumber() {
-				log.Println("高QC的视图号小于当前视图号")
-			}
+			cmd := []byte("CMD of View: " + strconv.Itoa(int(NewViewMsg.ViewNumber)))
+			block := chain.CreateBlock(HighQC.BlockHash, HighQC.ViewNumber+1, HighQC, cmd, s.ID)
 			ProposalMsg = &pb2.Proposal{
 				Block: block,
 				Qc:    HighQC,
@@ -297,14 +301,6 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 
 			log.Println("尝试发送视图 ", *sync.ViewNumber()+1, " 的提案 ")
 
-			// 视图成功并退出，视图成功理应在接收到Prepare消息时触发
-			// 放在此处是防止其他节点投票到来时主节点还未切换视图
-			// 对于主节点来说放在这里和放在Prepare函数中等效
-			//ViewSuccess(sync)
-			// 同理，对于主节点来说存储临时区块的操作应该放在Prepare函数中
-			// 但是为了保证视图对齐，这里也存储临时区块
-			chain.StoreToTemp(block)
-
 			for _, client := range modules.MODULES.ReplicaClient {
 				go (*client).Prepare(context.Background(), ProposalMsg)
 			}
@@ -316,7 +312,7 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ReplicaServer) NextView() { //所有的wait for阶段超时都会调用这个函数，//todo 记得go调用
+func (s *ReplicaServer) NextView() { //所有的wait for阶段超时都会调用这个函数
 	var (
 		sync = modules.MODULES.Synchronizer
 		cryp = modules.MODULES.Signer
@@ -326,26 +322,24 @@ func (s *ReplicaServer) NextView() { //所有的wait for阶段超时都会调用
 		select {
 		case <-sync.Timeout():
 			s.SetState(Switching)
-			ViewNow := *sync.ViewNumber()
-			ViewNow++
-			//ViewSuccess(sync) //退出视图，避免同一视图一直超时无法进入下一视图
+			s.TempViewNumber++ //正常情况下TempViewNumber应该等于ViewNumber
 			var QC = s.PrepareQC
-			//对QC签名作为自己的签名
-			sig, err := cryp.Sign(pb2.MsgType_NEW_VIEW, *sync.ViewNumber(), s.PrepareQC.BlockHash)
+			sig, err := cryp.Sign(pb2.MsgType_NEW_VIEW, s.TempViewNumber, s.PrepareQC.BlockHash)
 			if err != nil {
 				log.Println("部分签名失败")
 			}
 			var leader pb2.HotstuffClient
-			leader = *modules.MODULES.ReplicaClient[sync.GetLeader(ViewNow)]
+			leader = *modules.MODULES.ReplicaClient[sync.GetLeader(s.TempViewNumber)]
 			NewViewMsg := &pb2.NewViewMsg{
 				// ProposalId: nil,
-				ViewNumber: ViewNow,
+				ViewNumber: s.TempViewNumber,
 				Voter:      s.ID,
 				Signature:  sig,
 				Hash:       s.PrepareQC.BlockHash,
 				MsgType:    pb2.MsgType_NEW_VIEW,
 				Qc:         QC,
 			}
+			log.Println("向节点 ", sync.GetLeader(s.TempViewNumber), " 发送超时临时视图 ", s.TempViewNumber, " 的NewView消息，当前视图: ", *sync.ViewNumber())
 			leader.NewView(context.Background(), NewViewMsg)
 		}
 		time.Sleep(10 * time.Millisecond)

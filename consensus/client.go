@@ -24,7 +24,7 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb2.Proposal) (*e
 	)
 
 	fmt.Printf("\n")
-	log.Println("接收到来自视图 ", *sync.ViewNumber()+1, "中节点 ", Proposal.Proposer, " 的提案，等待验证后进入新视图，当前视图: ", *sync.ViewNumber())
+	log.Println("接收到来自视图 ", Proposal.ViewNumber, "中节点 ", Proposal.Proposer, " 的提案，等待验证后进入新视图，当前视图: ", *sync.ViewNumber())
 
 	// 3. 确保区块来自主节点
 	if Proposal.Proposer != sync.GetLeader(Proposal.ViewNumber) {
@@ -45,9 +45,17 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb2.Proposal) (*e
 		return nil, fmt.Errorf("proposal is not valid")
 	}
 
-	for *sync.ViewNumber() < Proposal.ViewNumber {
-		ViewSuccess(sync)
+	// 切换到合适视图
+	if *sync.ViewNumber() < Proposal.ViewNumber {
+		_, success := sync.GetContext()
+		for *sync.ViewNumber() < Proposal.ViewNumber {
+			sync.ViewNumberPP()
+		}
+		s.TempViewNumber = Proposal.ViewNumber
+		once := sync.GetOnly()
+		once.Do(success)
 	}
+
 	s.lastVote = Proposal.ViewNumber
 
 	s.SetState(Prepare)
@@ -72,7 +80,7 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb2.Proposal) (*e
 	var leader pb2.HotstuffClient
 	leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 
-	log.Println("视图 ", *sync.ViewNumber(), " 的领导者是: ", sync.GetLeader())
+	//log.Println("视图 ", *sync.ViewNumber(), " 的领导者是: ", sync.GetLeader())
 
 	//模拟投票处理和传输时延
 	time.Sleep(d.GetProcessTime())
@@ -95,7 +103,9 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb2.Precomm
 
 	s.PrepareQC = PrecommitMsg.Qc //更新PrepareQC
 
-	sync.TimerReset()
+	if !sync.TimerReset() { //重置计时器
+		log.Println("视图 ", *sync.ViewNumber(), "：超时，终止后续操作")
+	}
 	s.SetState(Precommit)
 
 	block := PrecommitMsg.Block
@@ -138,7 +148,9 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb2.CommitMsg) (*
 
 	s.LockedQC = CommitMsg.Qc //更新LockedQC
 
-	sync.TimerReset() //重置计时器
+	if !sync.TimerReset() { //重置计时器
+		log.Println("视图 ", *sync.ViewNumber(), "：超时，终止后续操作")
+	}
 	s.SetState(Commit)
 
 	block := CommitMsg.Block
@@ -178,7 +190,9 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb2.DecideMsg) (*
 	if ok, err := MatchingMsg(DecideMsg.MsgType, DecideMsg.ViewNumber, pb2.MsgType_DECIDE, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
-	sync.TimerReset() //重置计时器
+	if !sync.TimerReset() { //重置计时器
+		log.Println("视图 ", *sync.ViewNumber(), "：超时，终止后续操作")
+	}
 	s.SetState(Switching)
 
 	block := DecideMsg.Block
@@ -188,14 +202,13 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb2.DecideMsg) (*
 
 	chain.WriteToFile(block)
 
-	sig, err := cryp.Sign(pb2.MsgType_NEW_VIEW, *sync.ViewNumber(), DecideMsg.Hash)
+	sig, err := cryp.Sign(pb2.MsgType_NEW_VIEW, *sync.ViewNumber()+1, DecideMsg.Hash)
 	if err != nil {
 		log.Println("部分签名失败")
 	}
-	curViewNumber++
 
 	NewViewMsg := &pb2.NewViewMsg{
-		ViewNumber: *sync.ViewNumber(),
+		ViewNumber: *sync.ViewNumber() + 1,
 		Voter:      s.ID,
 		Signature:  sig,
 		Hash:       DecideMsg.Hash,

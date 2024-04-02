@@ -58,14 +58,10 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 		return &pb2.DebugMsg{}, nil
 	//控制节点连接其他节点
 	case "ConnectToOthers", "cto", "原神":
-		var nums int
-		if d.DebugMode {
-			nums = 2
-		} else {
-			nums = 4
-		}
-		for i := 1; i <= nums; i++ {
-			NewReplicaClient(int32(i))
+		var nums, i int32
+		nums = d.NumReplicas
+		for i = 1; i <= nums; i++ {
+			NewReplicaClient(i)
 		}
 		sync.Start()
 		return &pb2.DebugMsg{}, nil

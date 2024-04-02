@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	BASE_Timeout = 1500 * time.Millisecond //基础超时时间
-	MAX_Timeout  = 3000 * time.Millisecond //最大超时时间
+	BASE_Timeout = 500 * time.Second  //基础超时时间
+	MAX_Timeout  = 1000 * time.Second //最大超时时间
 )
 
 type State int
@@ -68,12 +68,15 @@ func (s *SYNC) GetLeader(viewnumber ...int64) int32 {
 	}
 }
 
-func (s *SYNC) Start() {
-	s.eventChan <- StartEvent
-}
-
 func (s *SYNC) TimerReset() bool {
-	return s.timer.Reset(s.view.Duration(s))
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	duration := s.view.Duration(s)
+	if !s.timer.Stop() {
+		<-s.timer.C
+		log.Println("重置计时器")
+	}
+	return s.timer.Reset(duration)
 }
 
 func (s *SYNC) GetContext() (context.Context, context.CancelFunc) {
@@ -179,7 +182,7 @@ func (s *SYNC) HighQC() *pb2.QC {
 	}()
 	var highqc = &pb2.QC{}
 	for i := 0; i < len(s.view.Vote.NewView); i++ {
-		if s.view.Vote.NewView[i].Qc.ViewNumber > highqc.ViewNumber {
+		if s.view.Vote.NewView[i].Qc.ViewNumber >= highqc.ViewNumber {
 			highqc = s.view.Vote.NewView[i].Qc
 		}
 	}
@@ -230,6 +233,10 @@ func NewSync() *SYNC {
 	return sync
 }
 
+func (s *SYNC) Start() {
+	s.eventChan <- StartEvent
+}
+
 // handleEvent 处理从视图传来的事件，并且根据事件和当前状态来变更状态。
 func (s *SYNC) handleEvent(event Event) {
 	s.mu.Lock()
@@ -265,7 +272,8 @@ func (s *SYNC) startView() {
 			}
 		}
 	}
-	s.timer = time.NewTimer(s.view.Duration(s))
+	duration := s.view.Duration(s)
+	s.timer = time.NewTimer(duration)
 
 	go func() {
 		select {
@@ -278,19 +286,38 @@ func (s *SYNC) startView() {
 }
 
 func (s *SYNC) handleTimeout() {
-	if s.State != Running {
-		// 只有在 Running 状态时，超时才有效
-		return
-	}
+	// 设置状态为初始化中
+	s.State = Initializing
+
+	// 通知超时
 	s.TimeoutChan <- true
 	log.Println("视图 ", s.CurrentView, " 超时")
+
+	// 重置超时倍数
 	if s.timeoutMul < MAX_Timeout/BASE_Timeout {
 		s.timeoutMul *= 2
 	} else {
 		// 达到最大倍数时，保持不变或设置为最大超时倍数的值
 		s.timeoutMul = MAX_Timeout / BASE_Timeout
 	}
-	s.prepareForNextView()
+
+	// 重置计时器继续监控超时
+	s.timer = time.NewTimer(s.view.Duration(s))
+
+	// 等待成功切换视图
+	go func() {
+		for {
+			select {
+			case <-s.view.ctx_success.Done():
+				log.Println("超时切换视图 ", s.CurrentView, " 成功")
+				time.Sleep(20 * time.Millisecond)
+				s.eventChan <- SuccessEvent
+				break
+			case <-s.timer.C:
+				s.eventChan <- TimeoutEvent
+			}
+		}
+	}()
 }
 
 func (s *SYNC) handleSuccess() {
@@ -298,7 +325,6 @@ func (s *SYNC) handleSuccess() {
 		// 只有在 Running 状态时，成功才有效
 		return
 	}
-	// log.Println("视图 ", s.CurrentView, " 成功退出")
 	s.timeoutMul = 1
 	s.prepareForNextView()
 }

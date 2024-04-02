@@ -98,9 +98,9 @@ func (bc *Blockchain) GetBlock(hash []byte) *pb.Block {
 	block := bc.Blocks[string(hash)]
 	if block == nil {
 		for _, client := range modules.MODULES.ReplicaClient {
-			block, _ := (*client).GetBlock(context.Background(), &pb.SyncBlock{Hash: string(hash)})
-			if block != nil {
-				return block
+			b, _ := (*client).GetBlock(context.Background(), &pb.SyncBlock{Hash: string(hash)})
+			if b != nil {
+				return b
 			}
 		}
 		log.Println("未能获取区块")

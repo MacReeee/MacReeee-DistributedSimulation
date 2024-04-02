@@ -68,8 +68,7 @@ func writeFatalErr(errinfo string) {
 }
 
 type ReplicaServer struct {
-	mu stsync.Mutex
-	// sigs      map[kyber.Point][]byte
+	mu        stsync.Mutex
 	count     int
 	threshold int
 	wg        stsync.WaitGroup
@@ -78,10 +77,11 @@ type ReplicaServer struct {
 	state State
 	cond  *stsync.Cond
 
-	ID        int32
-	PrepareQC *pb2.QC
-	LockedQC  *pb2.QC
-	lastVote  int64
+	ID             int32
+	PrepareQC      *pb2.QC
+	LockedQC       *pb2.QC
+	lastVote       int64
+	TempViewNumber int64
 
 	pb2.UnimplementedHotstuffServer
 }
@@ -119,15 +119,16 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 	}
 
 	replicaserver := &ReplicaServer{
-		threshold: thresh,
-		count:     0,
-		wg:        stsync.WaitGroup{},
-		once:      stsync.Once{},
-		state:     Idle,
-		PrepareQC: PrepareQC,
-		LockedQC:  LockedQC,
-		lastVote:  0,
-		ID:        id,
+		threshold:      thresh,
+		count:          0,
+		wg:             stsync.WaitGroup{},
+		once:           stsync.Once{},
+		state:          Idle,
+		PrepareQC:      PrepareQC,
+		LockedQC:       LockedQC,
+		lastVote:       0,
+		TempViewNumber: 0,
+		ID:             id,
 	}
 	replicaserver.cond = stsync.NewCond(&replicaserver.mu)
 

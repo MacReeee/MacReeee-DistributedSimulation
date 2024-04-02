@@ -34,9 +34,9 @@ type view struct {
 }
 
 func (v *view) Duration(s *SYNC) time.Duration {
-	if s.CurrentView == 0 {
-		return 100 * time.Hour
-	}
+	//if s.CurrentView == 0 {
+	//	return 100 * time.Hour
+	//}
 	mul := s.timeoutMul
 	if BASE_Timeout*mul > MAX_Timeout {
 		return MAX_Timeout
