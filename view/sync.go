@@ -202,10 +202,6 @@ func EventLoop(s *SYNC) {
 
 func (s *SYNC) TimerReset() bool {
 	duration := s.view.Duration(s)
-	//if !s.timer.Stop() {
-	//	<-s.timer.C
-	//	log.Println("重置计时器")
-	//}
 	temp := s.timer.Reset(duration)
 	return temp
 }

@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	stsync "sync"
+	"time"
 )
 
 type State string
@@ -74,6 +75,7 @@ type ReplicaServer struct {
 	LockedQC       *pb2.QC
 	lastVote       int64
 	TempViewNumber int64
+	TimeoutRecord  int
 
 	pb2.UnimplementedHotstuffServer
 }
@@ -121,6 +123,7 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 		lastVote:       0,
 		TempViewNumber: 0,
 		ID:             id,
+		TimeoutRecord:  0,
 	}
 	replicaserver.cond = stsync.NewCond(&replicaserver.mu)
 
@@ -185,5 +188,20 @@ func (s *ReplicaServer) StopVoting(viewnumber int64) {
 	defer s.mu.Unlock()
 	if s.lastVote < viewnumber {
 		s.lastVote = viewnumber
+	}
+}
+
+func (s *ReplicaServer) RecordTimeOutLogToFile() {
+	file, err := os.OpenFile("./output/timeout.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Println("打开文件失败:", err)
+	}
+	defer file.Close()
+	// 年/月/日 时:分:秒 节点[ID] 视图号[ViewNumber] : 当前超时次数TimeoutRecord
+	now := time.Now().Format("2006/01/02 15:04:05")
+	record := fmt.Sprintf("%s 节点[%d] 视图号[%d] : 当前超时次数 %d\n", now, s.ID, s.TempViewNumber, s.TimeoutRecord)
+	_, err = file.WriteString(record)
+	if err != nil {
+		log.Println("写入文件失败:", err)
 	}
 }

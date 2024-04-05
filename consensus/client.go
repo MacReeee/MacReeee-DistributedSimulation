@@ -229,6 +229,8 @@ func (s *ReplicaServer) NextView() { //所有的wait for阶段超时都会调用
 		case <-sync.Timeout():
 			s.SetState(Switching)
 			s.TempViewNumber++ //正常情况下TempViewNumber应该等于ViewNumber
+			s.TimeoutRecord++
+			s.RecordTimeOutLogToFile()
 			var QC = s.PrepareQC
 			sig, err := cryp.Sign(pb2.MsgType_NEW_VIEW, s.TempViewNumber, s.PrepareQC.BlockHash)
 			if err != nil {
