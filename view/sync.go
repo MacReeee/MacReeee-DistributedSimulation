@@ -78,14 +78,14 @@ func NewSync() *SYNC {
 func (s *SYNC) Success() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.timeoutSwitching {
+	if s.timeoutSwitching { //如果发生了超时，成功切换视图以后走此分支
 		s.State = TimeoutSwitching
 		s.SwitchSuccess <- true
-	} else {
+	} else { //正常情况下的分支
 		s.State = SuccessSwitching
 		s.ViewSuccess <- true
 	}
-	for s.State != Running {
+	for s.State != Running { //等待新视图创建并初始化成功
 		s.cond.Wait()
 	}
 }
