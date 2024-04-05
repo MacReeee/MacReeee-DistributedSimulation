@@ -111,27 +111,6 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 	}
 }
 
-//func PrintChain() {
-//	var (
-//		// sync  = modules.MODULES.Synchronizer
-//		// cryp  = modules.MODULES.Signer
-//		chain = modules.MODULES.Chain
-//	)
-//	_, _, keys := chain.GetBlockChain()
-//
-//	var i = 0
-//	for _, block := range keys {
-//		fmt.Printf("\n区块 %d 的信息:\n", i)
-//
-//		fmt.Println("区块Hash:\t", string(block.Hash))
-//		fmt.Println("父Hash:\t\t", string(block.ParentHash))
-//		fmt.Println("区块高度:\t", block.Height)
-//		fmt.Println("子区块的Hash:\t", block.Children)
-//		fmt.Println("区块的内容:\t", string(block.Cmd), "\n")
-//		i++
-//	}
-//}
-
 func (s *ReplicaServer) SelfID() int32 {
 	return s.ID
 }
