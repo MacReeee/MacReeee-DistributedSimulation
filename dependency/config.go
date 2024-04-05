@@ -5,9 +5,10 @@ import (
 )
 
 var (
-	DebugMode         = true //调试模式开关
-	NumReplicas int32 = 2    //副本数量
-	ReplicaID   int32        //副本ID
+	DebugMode            = true //调试模式开关
+	DebugThreshold       = 3    //调试模式阈值
+	NumReplicas    int32 = 4    //副本数量
+	ReplicaID      int32        //副本ID
 )
 
 type network struct {

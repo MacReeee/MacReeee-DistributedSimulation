@@ -22,3 +22,11 @@ func (o *OnceWithDone) IsDone() bool {
 	defer o.mu.Unlock()
 	return o.done
 }
+
+func (o *OnceWithDone) Reset() {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.once.Do(func() {})
+	o.once = sync.Once{}
+	o.done = false
+}

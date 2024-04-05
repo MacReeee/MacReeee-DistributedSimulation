@@ -47,13 +47,10 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb2.Proposal) (*e
 
 	// 切换到合适视图
 	if *sync.ViewNumber() < Proposal.ViewNumber {
-		_, success := sync.GetContext()
-		for *sync.ViewNumber() < Proposal.ViewNumber {
-			sync.ViewNumberPP()
-		}
+		sync.ViewNumberSet(Proposal.ViewNumber)
 		s.TempViewNumber = Proposal.ViewNumber
 		once := sync.GetOnly()
-		once.Do(success)
+		once.Do(sync.Success)
 	}
 
 	s.lastVote = Proposal.ViewNumber
@@ -103,9 +100,8 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb2.Precomm
 
 	s.PrepareQC = PrecommitMsg.Qc //更新PrepareQC
 
-	if !sync.TimerReset() { //重置计时器
-		log.Println("视图 ", *sync.ViewNumber(), "：超时，终止后续操作")
-	}
+	sync.TimerReset()
+
 	s.SetState(Precommit)
 
 	block := PrecommitMsg.Block
@@ -148,9 +144,7 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb2.CommitMsg) (*
 
 	s.LockedQC = CommitMsg.Qc //更新LockedQC
 
-	if !sync.TimerReset() { //重置计时器
-		log.Println("视图 ", *sync.ViewNumber(), "：超时，终止后续操作")
-	}
+	sync.TimerReset()
 	s.SetState(Commit)
 
 	block := CommitMsg.Block
@@ -190,9 +184,7 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb2.DecideMsg) (*
 	if ok, err := MatchingMsg(DecideMsg.MsgType, DecideMsg.ViewNumber, pb2.MsgType_DECIDE, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
-	if !sync.TimerReset() { //重置计时器
-		log.Println("视图 ", *sync.ViewNumber(), "：超时，终止后续操作")
-	}
+	sync.TimerReset()
 	s.SetState(Switching)
 
 	block := DecideMsg.Block
@@ -224,4 +216,38 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb2.DecideMsg) (*
 
 	go leader.NewView(context.Background(), NewViewMsg)
 	return &emptypb.Empty{}, nil
+}
+
+func (s *ReplicaServer) NextView() { //所有的wait for阶段超时都会调用这个函数
+	var (
+		sync = modules.MODULES.Synchronizer
+		cryp = modules.MODULES.Signer
+		// chain = modules.MODULES.Chain
+	)
+	for {
+		select {
+		case <-sync.Timeout():
+			s.SetState(Switching)
+			s.TempViewNumber++ //正常情况下TempViewNumber应该等于ViewNumber
+			var QC = s.PrepareQC
+			sig, err := cryp.Sign(pb2.MsgType_NEW_VIEW, s.TempViewNumber, s.PrepareQC.BlockHash)
+			if err != nil {
+				log.Println("部分签名失败")
+			}
+			var leader pb2.HotstuffClient
+			leader = *modules.MODULES.ReplicaClient[sync.GetLeader(s.TempViewNumber)]
+			NewViewMsg := &pb2.NewViewMsg{
+				// ProposalId: nil,
+				ViewNumber: s.TempViewNumber,
+				Voter:      s.ID,
+				Signature:  sig,
+				Hash:       s.PrepareQC.BlockHash,
+				MsgType:    pb2.MsgType_NEW_VIEW,
+				Qc:         QC,
+			}
+			log.Println("向节点 ", sync.GetLeader(s.TempViewNumber), " 发送超时临时视图 ", s.TempViewNumber, " 的NewView消息，当前视图: ", *sync.ViewNumber())
+			leader.NewView(context.Background(), NewViewMsg)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }

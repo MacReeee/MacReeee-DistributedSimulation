@@ -33,6 +33,7 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 		return &pb2.DebugMsg{}, nil
 	//启动仿真程序
 	case "StartAll", "sa", "启动":
+		sync.Start()
 		if s.ID == 1 {
 			s.SetState(Switching)
 			highQC := s.PrepareQC
@@ -63,7 +64,6 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 		for i = 1; i <= nums; i++ {
 			NewReplicaClient(i)
 		}
-		sync.Start()
 		return &pb2.DebugMsg{}, nil
 	case "TestTimeoutStart", "tts":
 		log.Printf("启动视图计时器，等待超时\n")

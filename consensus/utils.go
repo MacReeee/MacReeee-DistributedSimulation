@@ -3,7 +3,6 @@ package hotstuff
 import (
 	"context"
 	d "distributed/dependency"
-	"distributed/middleware"
 	"distributed/modules"
 	pb2 "distributed/pb"
 	"encoding/json"
@@ -38,13 +37,6 @@ func MatchingMsg(Type pb2.MsgType, ViewNumber int64, TarType pb2.MsgType, Tarvie
 		return false, fmt.Errorf("视图号不匹配")
 	}
 	return condition1 && condition2, nil
-}
-
-func ViewSuccess(sync middleware.Synchronizer) {
-	_, success := sync.GetContext()
-	sync.ViewNumberPP()
-	once := sync.GetOnly()
-	once.Do(success)
 }
 
 func QCMarshal(qc *pb2.QC) []byte {
@@ -113,7 +105,7 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 
 	var thresh int
 	if d.DebugMode {
-		thresh = 2
+		thresh = d.DebugThreshold
 	} else {
 		thresh = 3
 	}

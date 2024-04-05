@@ -1,0 +1,15 @@
+syntax="proto3";
+option go_package="./view";
+package sync;
+
+import "google/protobuf/empty.proto";
+
+service SyncService {
+    rpc Sync(SyncMessage) returns (SyncMessage) {}
+}
+
+message SyncMessage {
+    string Command = 1;
+    string Data = 2;
+    string Response = 3;
+}

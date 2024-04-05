@@ -1,8 +1,6 @@
 package view
 
 import (
-	"context"
-	"distributed/dependency"
 	"distributed/modules"
 	pb2 "distributed/pb"
 	"log"
@@ -11,8 +9,8 @@ import (
 )
 
 var (
-	BASE_Timeout = 500 * time.Second  //基础超时时间
-	MAX_Timeout  = 1000 * time.Second //最大超时时间
+	BASE_Timeout = 2 * time.Second //基础超时时间
+	MAX_Timeout  = 5 * time.Second //最大超时时间
 )
 
 type State int
@@ -20,6 +18,9 @@ type State int
 const (
 	Initializing State = iota
 	Running
+
+	SuccessSwitching
+	TimeoutSwitching
 )
 
 type Event int
@@ -33,13 +34,17 @@ const (
 type SYNC struct {
 	State State
 
-	mu sync.Mutex
+	mu   sync.Mutex
+	cond *sync.Cond
 
 	CurrentView int64
 
-	view       view          //当前视图
-	max        time.Duration // 视图超时的上限
-	timeoutMul time.Duration // 在失败的视图上，将当前平均值乘以此数（应大于1），类似指数退避
+	view             View          //当前视图
+	max              time.Duration // 视图超时的上限
+	timeoutMul       time.Duration // 在失败的视图上，将当前平均值乘以此数（应大于1），类似指数退避
+	timeoutSwitching bool          // 是否正在切换视图
+	SwitchSuccess    chan bool
+	ViewSuccess      chan bool
 
 	timer     *time.Timer //每个视图的计时器
 	eventChan chan Event
@@ -47,220 +52,52 @@ type SYNC struct {
 	TimeoutChan chan bool
 }
 
-// 如果传入视图号，则返回该视图号对应的 Leader 编号，否则返回当前视图对应的 Leader 编号。
-func (s *SYNC) GetLeader(viewnumber ...int64) int32 {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if len(viewnumber) == 0 {
-		leader := int32(s.CurrentView) % dependency.NumReplicas
-		if leader == 0 {
-			return dependency.NumReplicas
-		} else {
-			return leader
-		}
-	}
-	leader := int32(viewnumber[0]) % dependency.NumReplicas
-	if leader == 0 {
-		return dependency.NumReplicas
-	} else {
-		return leader
-	}
-}
-
-func (s *SYNC) TimerReset() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	duration := s.view.Duration(s)
-	if !s.timer.Stop() {
-		<-s.timer.C
-		log.Println("重置计时器")
-	}
-	return s.timer.Reset(duration)
-}
-
-func (s *SYNC) GetContext() (context.Context, context.CancelFunc) {
-	return s.view.ctx_success, s.view.success
-}
-func (s *SYNC) GetOnly() *sync.Once {
-	return s.view.only
-}
-
-func (s *SYNC) ViewNumber() *int64 {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return &s.CurrentView
-}
-
-func (s *SYNC) Timeout() <-chan bool {
-	return s.TimeoutChan
-}
-
-func (s *SYNC) StoreVote(msgType pb2.MsgType, NormalMsg *pb2.VoteRequest, NewViewMsg ...*pb2.NewViewMsg) {
-	s.view.mu.Lock()
-	defer s.view.mu.Unlock()
-	if NormalMsg != nil {
-		switch msgType {
-		case pb2.MsgType_PREPARE_VOTE:
-			s.view.Vote.Prepare = append(s.view.Vote.Prepare, NormalMsg)
-			s.view.Vote.PrepareVoter = append(s.view.Vote.PrepareVoter, NormalMsg.Voter)
-		case pb2.MsgType_PRE_COMMIT_VOTE:
-			s.view.Vote.PreCommit = append(s.view.Vote.PreCommit, NormalMsg)
-			s.view.Vote.PreCommitVoter = append(s.view.Vote.PreCommitVoter, NormalMsg.Voter)
-		case pb2.MsgType_COMMIT_VOTE:
-			s.view.Vote.Commit = append(s.view.Vote.Commit, NormalMsg)
-			s.view.Vote.CommitVoter = append(s.view.Vote.CommitVoter, NormalMsg.Voter)
-		}
-	}
-	if NewViewMsg != nil {
-		s.view.Vote.NewView = append(s.view.Vote.NewView, NewViewMsg...)
-		s.view.Vote.NewViewVoter = append(s.view.Vote.NewViewVoter, NewViewMsg[0].ProposalId)
-	}
-}
-
-func (s *SYNC) GetVoter(msgType pb2.MsgType) ([]int32, [][]byte, *dependency.OnceWithDone) {
-	var (
-		voters = make([]int32, 0)
-		sigs   = make([][]byte, 0)
-	)
-	// 尝试捕获异常
-	defer func() {
-		if r := recover(); r != nil {
-			ss := s
-			log.Println("当前视图信息: ", ss)
-			log.Println("捕获到异常: ", r)
-			panic("捕获到异常")
-		}
-	}()
-	s.view.mu.Lock()
-	defer s.view.mu.Unlock()
-	switch msgType {
-	case pb2.MsgType_NEW_VIEW:
-		for _, vote := range s.view.Vote.NewView {
-			sigs = append(sigs, vote.Signature)
-		}
-		voters = s.view.Vote.NewViewVoter
-		return voters, sigs, s.view.once[pb2.MsgType_NEW_VIEW]
-
-	case pb2.MsgType_PREPARE_VOTE:
-		for _, vote := range s.view.Vote.Prepare {
-			sigs = append(sigs, vote.Signature)
-		}
-		voters = s.view.Vote.PrepareVoter
-		return voters, sigs, s.view.once[pb2.MsgType_PREPARE_VOTE]
-
-	case pb2.MsgType_PRE_COMMIT_VOTE:
-		for _, vote := range s.view.Vote.PreCommit {
-			sigs = append(sigs, vote.Signature)
-		}
-		voters = s.view.Vote.PreCommitVoter
-		return voters, sigs, s.view.once[pb2.MsgType_PRE_COMMIT_VOTE]
-
-	case pb2.MsgType_COMMIT_VOTE:
-		for _, vote := range s.view.Vote.Commit {
-			sigs = append(sigs, vote.Signature)
-		}
-		voters = s.view.Vote.CommitVoter
-		return voters, sigs, s.view.once[pb2.MsgType_COMMIT_VOTE]
-	}
-	return nil, nil, nil
-}
-
-func (s *SYNC) GetOnce(megType pb2.MsgType) *dependency.OnceWithDone {
-	return s.view.once[megType]
-}
-
-func (s *SYNC) HighQC() *pb2.QC {
-	// 尝试捕获异常
-	defer func() {
-		if r := recover(); r != nil {
-			ss := s
-			log.Println("当前视图信息: ", ss)
-			log.Println("捕获到异常: ", r)
-			panic("捕获到异常")
-		}
-	}()
-	var highqc = &pb2.QC{}
-	for i := 0; i < len(s.view.Vote.NewView); i++ {
-		if s.view.Vote.NewView[i].Qc.ViewNumber >= highqc.ViewNumber {
-			highqc = s.view.Vote.NewView[i].Qc
-		}
-	}
-	return highqc
-}
-
-// 根据存储的投票合成一个QC，已在server中实现
-func (s *SYNC) QC(msgType pb2.MsgType) *pb2.QC {
-	return &pb2.QC{}
-}
-
-func (s *SYNC) MU() *sync.Mutex {
-	return &s.mu
-}
-
-func (s *SYNC) ViewNumberPP() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.CurrentView++
-}
-
-func (s *SYNC) Debug() {
-	var (
-		sync = modules.MODULES.Synchronizer
-		// cryp  = modules.MODULES.SignerAndVerifier
-		cryp  = modules.MODULES.Signer
-		chain = modules.MODULES.Chain
-	)
-	log.Println("同步模块debug info: ", sync, cryp, chain)
-}
-
 func NewSync() *SYNC {
-	sync := &SYNC{
+	s := &SYNC{
 		State:       Initializing,
 		mu:          sync.Mutex{},
 		CurrentView: 0,
-		view:        *NewView(),
 		max:         MAX_Timeout,
 		timeoutMul:  1,
 
-		TimeoutChan: make(chan bool, 1),
-		eventChan:   make(chan Event),
+		TimeoutChan:      make(chan bool, 1),
+		eventChan:        make(chan Event),
+		timeoutSwitching: false,
+		SwitchSuccess:    make(chan bool),
+		ViewSuccess:      make(chan bool),
 	}
-	go EventLoop(sync)
-	sync.mu.Lock()
-	modules.MODULES.Synchronizer = sync
-	sync.mu.Unlock()
-	return sync
+	s.view = *NewView(s)
+	s.cond = sync.NewCond(&s.mu)
+	go EventLoop(s)
+	s.mu.Lock()
+	modules.MODULES.Synchronizer = s
+	s.mu.Unlock()
+	return s
 }
 
-func (s *SYNC) Start() {
-	s.eventChan <- StartEvent
-}
-
-// handleEvent 处理从视图传来的事件，并且根据事件和当前状态来变更状态。
-func (s *SYNC) handleEvent(event Event) {
+func (s *SYNC) Success() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	switch event {
-	case StartEvent:
-		s.startView()
-	case TimeoutEvent:
-		s.handleTimeout()
-	case SuccessEvent:
-		s.handleSuccess()
-		// 可能还有其他状态和事件的处理
+	if s.timeoutSwitching {
+		s.State = TimeoutSwitching
+		s.SwitchSuccess <- true
+	} else {
+		s.State = SuccessSwitching
+		s.ViewSuccess <- true
+	}
+	for s.State != Running {
+		s.cond.Wait()
 	}
 }
 
 func (s *SYNC) startView() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.State != Initializing {
 		// 如果当前状态不是 Initializing，则不应启动新视图
 		return
 	}
-	s.State = Running
 	// 初始化视图运行所需资源
-	//log.Println("开启新视图，当前视图: ", s.CurrentView)
 	// 设置超时定时器
 	if s.timer != nil {
 		if !s.timer.Stop() { // 确保停止旧的计时器
@@ -274,23 +111,29 @@ func (s *SYNC) startView() {
 	}
 	duration := s.view.Duration(s)
 	s.timer = time.NewTimer(duration)
+	s.State = Running
+	s.cond.Broadcast()
 
 	go func() {
 		select {
-		case <-s.view.ctx_success.Done():
-			s.eventChan <- SuccessEvent
 		case <-s.timer.C:
+			s.State = TimeoutSwitching
 			s.eventChan <- TimeoutEvent
+		case <-s.ViewSuccess:
+			s.State = SuccessSwitching
+			s.eventChan <- SuccessEvent
 		}
 	}()
 }
 
 func (s *SYNC) handleTimeout() {
-	// 设置状态为初始化中
-	s.State = Initializing
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.State != TimeoutSwitching {
+		return
+	}
+	s.timeoutSwitching = true
 
-	// 通知超时
-	s.TimeoutChan <- true
 	log.Println("视图 ", s.CurrentView, " 超时")
 
 	// 重置超时倍数
@@ -301,44 +144,68 @@ func (s *SYNC) handleTimeout() {
 		s.timeoutMul = MAX_Timeout / BASE_Timeout
 	}
 
-	// 重置计时器继续监控超时
-	s.timer = time.NewTimer(s.view.Duration(s))
+	s.view.once[pb2.MsgType_NEW_VIEW].Reset()
 
-	// 等待成功切换视图
+	// 通知超时
+	s.TimeoutChan <- true
+
 	go func() {
-		for {
-			select {
-			case <-s.view.ctx_success.Done():
-				log.Println("超时切换视图 ", s.CurrentView, " 成功")
-				time.Sleep(20 * time.Millisecond)
-				s.eventChan <- SuccessEvent
-				break
-			case <-s.timer.C:
-				s.eventChan <- TimeoutEvent
-			}
+		select {
+		case <-s.timer.C:
+			s.State = TimeoutSwitching
+			s.eventChan <- TimeoutEvent
+		case <-s.SwitchSuccess:
+			s.timeoutSwitching = false
+			s.State = SuccessSwitching
+			s.eventChan <- SuccessEvent
 		}
 	}()
 }
 
 func (s *SYNC) handleSuccess() {
-	if s.State != Running {
-		// 只有在 Running 状态时，成功才有效
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.State != SuccessSwitching {
 		return
 	}
 	s.timeoutMul = 1
-	s.prepareForNextView()
-}
-
-func (s *SYNC) prepareForNextView() {
-	s.view = *NewView() // 重新初始化视图
+	s.view = *NewView(s) // 重新初始化视图
 	s.State = Initializing
 	// 在状态更新后，主动触发 StartEvent，开始新视图的监听
 	go func() { s.eventChan <- StartEvent }()
 }
 
+func (s *SYNC) Start() {
+	s.eventChan <- StartEvent
+}
+
+// handleEvent 处理从视图传来的事件，并且根据事件和当前状态来变更状态。
+func (s *SYNC) handleEvent(event Event) {
+
+	switch event {
+	case StartEvent:
+		s.startView()
+	case TimeoutEvent:
+		s.handleTimeout()
+	case SuccessEvent:
+		s.handleSuccess()
+		// 可能还有其他状态和事件的处理
+	}
+}
+
 // mainEventLoop 是事件循环，负责接收事件并将其传递给状态处理函数。
 func EventLoop(s *SYNC) {
 	for event := range s.eventChan {
-		s.handleEvent(event)
+		go s.handleEvent(event)
 	}
+}
+
+func (s *SYNC) TimerReset() bool {
+	duration := s.view.Duration(s)
+	//if !s.timer.Stop() {
+	//	<-s.timer.C
+	//	log.Println("重置计时器")
+	//}
+	temp := s.timer.Reset(duration)
+	return temp
 }

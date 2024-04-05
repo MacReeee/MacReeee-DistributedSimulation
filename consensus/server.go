@@ -41,12 +41,8 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb2.VoteRequest) 
 		log.Println("prepare投票 签名验证失败")
 		return nil, fmt.Errorf("prepare vote signature is not valid")
 	}
-	sync.StoreVote(pb2.MsgType_PREPARE_VOTE, vote)
-	s.mu.Lock()
-	s.count++
-	count := s.count
+	count := sync.StoreVote(pb2.MsgType_PREPARE_VOTE, vote)
 	once := sync.GetOnce(pb2.MsgType_PREPARE_VOTE)
-	s.mu.Unlock()
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		log.Println("视图 ", *sync.ViewNumber(), " 的Prepare投票达成阈值")
 		sync.TimerReset() //重置计时器
@@ -116,11 +112,7 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb2.VoteRequest
 		log.Println("Pre_Commit Vote 的签名验证失败")
 		return nil, fmt.Errorf("Pre_Commit Vote 的签名验证失败")
 	}
-	sync.StoreVote(pb2.MsgType_PRE_COMMIT_VOTE, vote)
-	s.mu.Lock()
-	s.count++
-	count := s.count
-	s.mu.Unlock()
+	count := sync.StoreVote(pb2.MsgType_PRE_COMMIT_VOTE, vote)
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		sync.TimerReset() //重置计时器
 		voters, sigs, _ := sync.GetVoter(pb2.MsgType_PRE_COMMIT_VOTE)
@@ -187,11 +179,7 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb2.VoteRequest) (
 	if !cryp.Verify(vote.Voter, msg, vote.Signature) {
 		return nil, fmt.Errorf("commit vote signature is not valid")
 	}
-	sync.StoreVote(pb2.MsgType_COMMIT_VOTE, vote)
-	s.mu.Lock()
-	s.count++
-	count := s.count
-	s.mu.Unlock()
+	count := sync.StoreVote(pb2.MsgType_COMMIT_VOTE, vote)
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		sync.TimerReset() //重置计时器
 		voters, sigs, _ := sync.GetVoter(pb2.MsgType_COMMIT_VOTE)
@@ -245,9 +233,9 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 
 	//如果已经触发阈值条件，不在接收后续的NewView消息
 	once := sync.GetOnce(pb2.MsgType_NEW_VIEW)
-	if once.IsDone() {
-		return nil, nil
-	}
+	//if once.IsDone() {
+	//	return nil, nil
+	//}
 
 	if NewViewMsg.MsgType != pb2.MsgType_NEW_VIEW {
 		log.Println("NewView消息类型不匹配")
@@ -265,12 +253,9 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 		log.Println("NewView消息签名验证失败")
 		return nil, fmt.Errorf("newview msg signature is not valid")
 	}
-	sync.StoreVote(pb2.MsgType_NEW_VIEW, nil, NewViewMsg)
-	s.mu.Lock()
-	s.count++
-	count := s.count
-	s.mu.Unlock()
+	count := sync.StoreVote(pb2.MsgType_NEW_VIEW, nil, NewViewMsg)
 	if count >= s.threshold { //条件达成，开始执行下一阶段
+		log.Println("视图 ", *sync.ViewNumber(), " 的NewView消息达成阈值")
 		sync.TimerReset() //重置计时器
 		var ProposalMsg = &pb2.Proposal{}
 		once.Do(func() { //调用其他副本的Propose
@@ -310,38 +295,4 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 		return &emptypb.Empty{}, nil
 	}
 	return &emptypb.Empty{}, nil
-}
-
-func (s *ReplicaServer) NextView() { //所有的wait for阶段超时都会调用这个函数
-	var (
-		sync = modules.MODULES.Synchronizer
-		cryp = modules.MODULES.Signer
-		// chain = modules.MODULES.Chain
-	)
-	for {
-		select {
-		case <-sync.Timeout():
-			s.SetState(Switching)
-			s.TempViewNumber++ //正常情况下TempViewNumber应该等于ViewNumber
-			var QC = s.PrepareQC
-			sig, err := cryp.Sign(pb2.MsgType_NEW_VIEW, s.TempViewNumber, s.PrepareQC.BlockHash)
-			if err != nil {
-				log.Println("部分签名失败")
-			}
-			var leader pb2.HotstuffClient
-			leader = *modules.MODULES.ReplicaClient[sync.GetLeader(s.TempViewNumber)]
-			NewViewMsg := &pb2.NewViewMsg{
-				// ProposalId: nil,
-				ViewNumber: s.TempViewNumber,
-				Voter:      s.ID,
-				Signature:  sig,
-				Hash:       s.PrepareQC.BlockHash,
-				MsgType:    pb2.MsgType_NEW_VIEW,
-				Qc:         QC,
-			}
-			log.Println("向节点 ", sync.GetLeader(s.TempViewNumber), " 发送超时临时视图 ", s.TempViewNumber, " 的NewView消息，当前视图: ", *sync.ViewNumber())
-			leader.NewView(context.Background(), NewViewMsg)
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
 }

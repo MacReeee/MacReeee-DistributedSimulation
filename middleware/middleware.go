@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	d "distributed/dependency"
 	pb2 "distributed/pb"
 	"sync"
@@ -14,18 +13,19 @@ type Synchronizer interface {
 	Start()
 	// StartTimeOutTimer(ctx context.Context, timeout context.CancelFunc)
 	TimerReset() bool
-	GetContext() (context.Context, context.CancelFunc)
+	Success()
 	GetOnly() *sync.Once //保证视图成功函数只执行一次
 
 	//元数据
 	ViewNumber() *int64
 	Timeout() <-chan bool
-	StoreVote(msgType pb2.MsgType, NormalMsg *pb2.VoteRequest, NewViewMsg ...*pb2.NewViewMsg)
+	StoreVote(msgType pb2.MsgType, NormalMsg *pb2.VoteRequest, NewViewMsg ...*pb2.NewViewMsg) int
 	GetVoter(msgType pb2.MsgType) ([]int32, [][]byte, *d.OnceWithDone) // 返回投票者、投票信息、对应的once
 	GetOnce(megType pb2.MsgType) *d.OnceWithDone
 	HighQC() *pb2.QC
 	MU() *sync.Mutex
 	ViewNumberPP()
+	ViewNumberSet(v int64)
 
 	//no use
 	QC(msgType pb2.MsgType) *pb2.QC //合成一个QC
