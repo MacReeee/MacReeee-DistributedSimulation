@@ -249,7 +249,8 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 
 	//签名校验
 	msg := []byte(fmt.Sprintf("%d,%d,%x", NewViewMsg.MsgType, NewViewMsg.ViewNumber, NewViewMsg.Hash))
-	if !cryp.Verify(NewViewMsg.Voter, msg, NewViewMsg.Signature) {
+
+	if NewViewMsg.ViewNumber != 0 && !cryp.Verify(NewViewMsg.Voter, msg, NewViewMsg.Signature) {
 		log.Println("NewView消息签名验证失败")
 		return nil, fmt.Errorf("newview msg signature is not valid")
 	}

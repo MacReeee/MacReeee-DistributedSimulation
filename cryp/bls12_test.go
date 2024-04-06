@@ -160,8 +160,8 @@ func Test_Ecdsa(t *testing.T) {
 func Test_bls(t *testing.T) {
 	suite := bn256.NewSuite()
 	privKey1, pubKey1 := bls.NewKeyPair(suite, random.New())
-	// fmt.Println("privKey1: ", privKey1)
-	// fmt.Println("pubKey1: ", pubKey1)
+	fmt.Println("privKey1: ", privKey1)
+	fmt.Println("pubKey1: ", pubKey1)
 
 	privKey2, pubKey2 := bls.NewKeyPair(suite, random.New())
 	// fmt.Println("privKey2: ", privKey2)
@@ -451,4 +451,28 @@ func Test_TestVerify(t *testing.T) {
 
 	res := signer.Verify(1, msg1, sig)
 	fmt.Println(res)
+}
+
+// 公私钥对生成器
+func Test_GenerateKeyPair2(t *testing.T) {
+	privKey, pubKey := bls.NewKeyPair(suite, random.New())
+	s, _ := privKey.MarshalBinary()
+	p, _ := pubKey.MarshalBinary()
+	//将公私钥转换成16进制字符串
+	privHex := hex.EncodeToString(s)
+	pubHex := hex.EncodeToString(p)
+	fmt.Println("priv (hex): ", privHex)
+	fmt.Println("pub (hex): ", pubHex)
+}
+
+func Test_NewKeyPair(t *testing.T) {
+	var i int32 = 10
+	signer5 := NewSignerByID(i)
+	msg := []byte("hello world")
+	sig5, _ := signer5.NormSign(msg)
+
+	signer1 := NewSignerByID(1)
+	fmt.Println(signer1.Verify(i, []byte("msg"), sig5))
+	fmt.Println(signer1.Verify(i, msg, sig5))
+
 }

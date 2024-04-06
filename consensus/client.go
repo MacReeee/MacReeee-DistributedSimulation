@@ -94,6 +94,10 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb2.Precomm
 		chain = modules.MODULES.Chain
 	)
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", PrecommitMsg.Id, " 的PreCommit消息")
+	if PrecommitMsg.ViewNumber < s.lastVote {
+		log.Println("PreCommit 消息的视图号小于上一次投票的视图号，拒绝投票")
+		return nil, fmt.Errorf("PreCommit Msg is too old")
+	}
 	if ok, err := MatchingMsg(PrecommitMsg.MsgType, PrecommitMsg.ViewNumber, pb2.MsgType_PRE_COMMIT, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
@@ -138,6 +142,10 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb2.CommitMsg) (*
 		chain = modules.MODULES.Chain
 	)
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", CommitMsg.Id, " 的Commit消息")
+	if CommitMsg.ViewNumber < s.lastVote {
+		log.Println("CommitMsg 消息的视图号小于上一次投票的视图号，拒绝投票")
+		return nil, fmt.Errorf("CommitMsg Msg is too old")
+	}
 	if ok, err := MatchingMsg(CommitMsg.MsgType, CommitMsg.ViewNumber, pb2.MsgType_COMMIT, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
@@ -181,6 +189,10 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb2.DecideMsg) (*
 		chain = modules.MODULES.Chain
 	)
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", DecideMsg.Id, " 的Decide消息")
+	if DecideMsg.ViewNumber < s.lastVote {
+		log.Println("DecideMsg 消息的视图号小于上一次投票的视图号，拒绝投票")
+		return nil, fmt.Errorf("DecideMsg Msg is too old")
+	}
 	if ok, err := MatchingMsg(DecideMsg.MsgType, DecideMsg.ViewNumber, pb2.MsgType_DECIDE, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
@@ -232,6 +244,7 @@ func (s *ReplicaServer) NextView() { //所有的wait for阶段超时都会调用
 			s.TimeoutRecord++
 			s.RecordTimeOutLogToFile()
 			var QC = s.PrepareQC
+
 			sig, err := cryp.Sign(pb2.MsgType_NEW_VIEW, s.TempViewNumber, s.PrepareQC.BlockHash)
 			if err != nil {
 				log.Println("部分签名失败")
