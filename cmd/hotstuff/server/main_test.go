@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"testing"
 
 	stcryp "crypto"
@@ -354,4 +355,26 @@ func Test_Decide(t *testing.T) {
 	client1 := *hotstuff.NewReplicaClient(1)
 	_, err := client1.Decide(context.Background(), DecideMsg)
 	log.Println("测试Decide的错误信息如下: ", err)
+}
+
+func Test_Command(t *testing.T) {
+	//// 创建命令
+	//cmd := exec.Command("pwd")
+	//
+	//// 将命令的标准输出和标准错误连接到当前进程的对应输出
+	//cmd.Stdout = os.Stdout
+	//cmd.Stderr = os.Stderr
+	//
+	//// 运行命令
+	//err := cmd.Run()
+	//if err != nil {
+	//	// 如果有错误，将其打印到标准错误
+	//	os.Stderr.WriteString(err.Error())
+	//}
+	dir, err := os.Getwd()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println("Current directory:", dir)
 }

@@ -7,8 +7,8 @@ import (
 	d "distributed/dependency"
 	"distributed/view"
 	"flag"
+	"fmt"
 	"log"
-	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"strconv"
@@ -17,9 +17,16 @@ import (
 func main() { //此主函数用于启动服务端
 
 	//分析堆栈时取消注释
-	go func() {
-		http.ListenAndServe("localhost:6060", nil)
-	}()
+	//go func() {
+	//	http.ListenAndServe("localhost:6060", nil)
+	//}()
+
+	dir, err := os.Getwd()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println("Current directory:", dir)
 
 	idptr := flag.Int("id", 1, "replica id")
 	flag.Parse()

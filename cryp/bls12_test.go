@@ -474,5 +474,11 @@ func Test_NewKeyPair(t *testing.T) {
 	signer1 := NewSignerByID(1)
 	fmt.Println(signer1.Verify(i, []byte("msg"), sig5))
 	fmt.Println(signer1.Verify(i, msg, sig5))
+}
 
+func Test_anything(t *testing.T) {
+	id := 1
+	host := "node" + fmt.Sprintf("%d", id)
+	addr := fmt.Sprintf("%v:%d", host, id+4000)
+	fmt.Println(addr)
 }

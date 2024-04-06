@@ -82,6 +82,10 @@ type ReplicaServer struct {
 
 func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 	addr := fmt.Sprintf(":%d", id+4000)
+	if d.DockerMode {
+		host := "node" + fmt.Sprintf("%d", id)
+		addr = fmt.Sprintf("%v:%d", host, id+4000)
+	}
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Println("副本服务监听失败:", err)
@@ -107,7 +111,7 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 
 	var thresh int
 	if d.DebugMode {
-		thresh = d.DebugThreshold
+		thresh = d.Threshold
 	} else {
 		thresh = 3
 	}

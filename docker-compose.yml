@@ -1,0 +1,78 @@
+version: '3.7'
+
+services:
+  console:
+
+  node1:
+    build: .
+    volumes:
+      - ./PrjRoot:/app
+    networks:
+      - app-network
+
+  node2:
+    build: .
+    volumes:
+      - ./PrjRoot:/app
+    networks:
+      - app-network
+
+  node3:
+    build: .
+    volumes:
+      - ./:/app
+    networks:
+      - app-network
+
+  node4:
+    build: .
+    volumes:
+      - ./:/app
+    networks:
+      - app-network
+
+  node5:
+    build: .
+    volumes:
+      - ./:/app
+    networks:
+      - app-network
+
+  node6:
+    build: .
+    volumes:
+      - ./:/app
+    networks:
+      - app-network
+
+  node7:
+    build: .
+    volumes:
+      - ./:/app
+    networks:
+      - app-network
+
+  node8:
+    build: .
+    volumes:
+      - ./:/app
+    networks:
+      - app-network
+
+  node9:
+    build: .
+    volumes:
+      - ./:/app
+    networks:
+      - app-network
+
+  node10:
+    build: .
+    volumes:
+      - ./:/app
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

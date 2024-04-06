@@ -5,11 +5,19 @@ import (
 )
 
 var (
-	DebugMode            = true //调试模式开关
-	DebugThreshold       = 6    //调试模式阈值
-	NumReplicas    int32 = 10   //副本数量
-	ReplicaID      int32        //副本ID
+	DebugMode         = true  //调试模式开关
+	DockerMode        = false //Docker模式开关
+	Threshold         = 6     //调试模式阈值
+	NumReplicas int32 = 10    //副本数量
+	ReplicaID   int32         //副本ID
 )
+
+type Buildinfo struct {
+	DebugMode   bool
+	DockerMode  bool
+	Threshold   int
+	NumReplicas int32
+}
 
 type network struct {
 	// 注意分布是指数分布
