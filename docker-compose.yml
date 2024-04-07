@@ -1,78 +1,107 @@
 version: '3.7'
 
 services:
-  console:
-
   node1:
-    build: .
+    image: hotstuff:2
     volumes:
-      - ./PrjRoot:/app
+      - /mnt/c/Users/Yang/Desktop/distributedHotstuff:/home/hotstuff/distributed
+    user: "hotstuff"
+    working_dir: /home/hotstuff/distributed
     networks:
-      - app-network
+      - HotStuff
+    command: [ "./hotstuff", "-id", "1" ]
 
   node2:
-    build: .
+    image: hotstuff:2
     volumes:
-      - ./PrjRoot:/app
+      - /mnt/c/Users/Yang/Desktop/distributedHotstuff:/home/hotstuff/distributed
+    user: "hotstuff"
+    working_dir: /home/hotstuff/distributed
     networks:
-      - app-network
+      - HotStuff
+    command: [ "./hotstuff", "-id", "2" ]
 
   node3:
-    build: .
+    image: hotstuff:2
     volumes:
-      - ./:/app
+      - /mnt/c/Users/Yang/Desktop/distributedHotstuff:/home/hotstuff/distributed
+    user: "hotstuff"
+    working_dir: /home/hotstuff/distributed
     networks:
-      - app-network
+      - HotStuff
+    command: [ "./hotstuff", "-id", "3" ]
 
   node4:
-    build: .
+    image: hotstuff:2
     volumes:
-      - ./:/app
+      - /mnt/c/Users/Yang/Desktop/distributedHotstuff:/home/hotstuff/distributed
+    user: "hotstuff"
+    working_dir: /home/hotstuff/distributed
     networks:
-      - app-network
+      - HotStuff
+    command: [ "./hotstuff", "-id", "4" ]
 
   node5:
-    build: .
+    image: hotstuff:2
     volumes:
-      - ./:/app
+      - /mnt/c/Users/Yang/Desktop/distributedHotstuff:/home/hotstuff/distributed
+    user: "hotstuff"
+    working_dir: /home/hotstuff/distributed
     networks:
-      - app-network
+      - HotStuff
+    command: [ "./hotstuff", "-id", "5" ]
 
   node6:
-    build: .
+    image: hotstuff:2
     volumes:
-      - ./:/app
+      - /mnt/c/Users/Yang/Desktop/distributedHotstuff:/home/hotstuff/distributed
+    user: "hotstuff"
+    working_dir: /home/hotstuff/distributed
     networks:
-      - app-network
+      - HotStuff
+    command: [ "./hotstuff", "-id", "6" ]
 
   node7:
-    build: .
+    image: hotstuff:2
     volumes:
-      - ./:/app
+      - /mnt/c/Users/Yang/Desktop/distributedHotstuff:/home/hotstuff/distributed
+    user: "hotstuff"
+    working_dir: /home/hotstuff/distributed
     networks:
-      - app-network
+      - HotStuff
+    command: [ "./hotstuff", "-id", "7" ]
 
   node8:
-    build: .
+    image: hotstuff:2
     volumes:
-      - ./:/app
+      - /mnt/c/Users/Yang/Desktop/distributedHotstuff:/home/hotstuff/distributed
+    user: "hotstuff"
+    working_dir: /home/hotstuff/distributed
     networks:
-      - app-network
+      - HotStuff
+    command: [ "./hotstuff", "-id", "8" ]
 
   node9:
-    build: .
+    image: hotstuff:2
     volumes:
-      - ./:/app
+      - /mnt/c/Users/Yang/Desktop/distributedHotstuff:/home/hotstuff/distributed
+    user: "hotstuff"
+    working_dir: /home/hotstuff/distributed
     networks:
-      - app-network
+      - HotStuff
+    command: [ "./hotstuff", "-id", "9" ]
 
   node10:
-    build: .
+    image: hotstuff:2
     volumes:
-      - ./:/app
+      - /mnt/c/Users/Yang/Desktop/distributedHotstuff:/home/hotstuff/distributed
+    user: "hotstuff"
+    working_dir: /home/hotstuff/distributed
     networks:
-      - app-network
+      - HotStuff
+    command: [ "./hotstuff", "-id", "10" ]
+
 
 networks:
-  app-network:
-    driver: bridge
+  HotStuff:
+    external: true

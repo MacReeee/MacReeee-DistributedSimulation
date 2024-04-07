@@ -5,18 +5,22 @@ import (
 )
 
 var (
-	DebugMode         = true  //调试模式开关
-	DockerMode        = false //Docker模式开关
-	Threshold         = 6     //调试模式阈值
-	NumReplicas int32 = 10    //副本数量
-	ReplicaID   int32         //副本ID
+	ReplicaID int32     //副本ID
+	Configs   = Config{ //配置文件
+		BuildInfo: Buildinfo{
+			DebugMode:   true,
+			DockerMode:  false,
+			Threshold:   0,
+			NumReplicas: 0,
+		},
+	}
 )
 
 type Buildinfo struct {
-	DebugMode   bool
-	DockerMode  bool
-	Threshold   int
-	NumReplicas int32
+	DebugMode   bool  //调试模式开关
+	DockerMode  bool  //Docker模式开关
+	Threshold   int   //调试模式阈值
+	NumReplicas int32 //副本数量
 }
 
 type network struct {

@@ -23,6 +23,12 @@ func Test_ToFile(t *testing.T) {
 	encoder.SetIndent("", "    ")
 
 	config := Config{
+		Buildinfo{
+			DebugMode:   true,
+			DockerMode:  false,
+			Threshold:   6,
+			NumReplicas: 10,
+		},
 		network{
 			Latency:     100,
 			ProcessTime: 20,

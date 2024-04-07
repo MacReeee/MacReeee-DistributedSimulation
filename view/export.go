@@ -14,16 +14,16 @@ func (s *SYNC) GetLeader(viewnumber ...int64) int32 {
 	defer s.mu.Unlock()
 
 	if len(viewnumber) == 0 {
-		leader := int32(s.CurrentView) % dependency.NumReplicas
+		leader := int32(s.CurrentView) % dependency.Configs.BuildInfo.NumReplicas
 		if leader == 0 {
-			return dependency.NumReplicas
+			return dependency.Configs.BuildInfo.NumReplicas
 		} else {
 			return leader
 		}
 	}
-	leader := int32(viewnumber[0]) % dependency.NumReplicas
+	leader := int32(viewnumber[0]) % dependency.Configs.BuildInfo.NumReplicas
 	if leader == 0 {
-		return dependency.NumReplicas
+		return dependency.Configs.BuildInfo.NumReplicas
 	} else {
 		return leader
 	}

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"distributed/consensus"
+	d "distributed/dependency"
 	pb2 "distributed/pb"
 	"fmt"
 	"log"
@@ -44,6 +45,8 @@ func main() {
 			tar = append(tar, int32(id))
 		}
 	}
+	//读取配置
+	d.LoadFromFile()
 
 	all := make([]int32, num)
 	for i := 1; i <= num; i++ {

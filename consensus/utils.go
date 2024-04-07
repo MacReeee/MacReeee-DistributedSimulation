@@ -82,10 +82,10 @@ type ReplicaServer struct {
 
 func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 	addr := fmt.Sprintf(":%d", id+4000)
-	if d.DockerMode {
-		host := "node" + fmt.Sprintf("%d", id)
-		addr = fmt.Sprintf("%v:%d", host, id+4000)
-	}
+	//if d.Configs.BuildInfo.DockerMode {
+	//	host := "node" + fmt.Sprintf("%d", id)
+	//	addr = fmt.Sprintf("%v:%d", host, id+4000)
+	//}
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Println("副本服务监听失败:", err)
@@ -110,8 +110,8 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 	}
 
 	var thresh int
-	if d.DebugMode {
-		thresh = d.Threshold
+	if d.Configs.BuildInfo.DebugMode {
+		thresh = d.Configs.BuildInfo.Threshold
 	} else {
 		thresh = 3
 	}
@@ -140,14 +140,18 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 }
 
 func NewReplicaClient(id int32) *pb2.HotstuffClient {
-	conn, err := grpc.Dial(fmt.Sprintf(":%d", id+4000), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	target := fmt.Sprintf(":%d", id+4000)
+	if d.Configs.BuildInfo.DockerMode {
+		host := "node" + fmt.Sprintf("%d", id)
+		target = fmt.Sprintf("%v:%d", host, id+4000)
+	}
+	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Println("副本", id, "连接失败:", err)
 		return nil
 	}
 	client := pb2.NewHotstuffClient(conn)
 	log.Println("连接副本", id, "成功")
-	// client.NewView(context.Background(), &pb.NewViewMsg{})
 	modules.MODULES.ReplicaClient[id] = &client
 	return &client
 }

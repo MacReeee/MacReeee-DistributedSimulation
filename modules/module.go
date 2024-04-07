@@ -15,11 +15,10 @@ type modules struct {
 	ReplicaServer       *grpc.Server
 	ReplicaServerStruct middleware.Server
 	ReplicaClient       map[int32]*pb.HotstuffClient
+	Reset               chan struct{} //复位信号
 
 	// Deprecated: Use CRYP instead
 	SignerAndVerifier middleware.Crypto
-
-	// ReplicaPubKey     map[int32]kyber.Point
 }
 
 var MODULES = &modules{

@@ -10,17 +10,18 @@ import (
 
 // 环境变量
 var (
-	r       = rand.New(rand.NewSource(time.Now().UnixNano())) //随机数生成器
-	Configs = Config{}
+	r = rand.New(rand.NewSource(time.Now().UnixNano())) //随机数生成器
+
 )
 
 type Config struct {
-	Network network `json:"Network"`
+	BuildInfo Buildinfo `json:"BuildInfo"`
+	Network   network   `json:"Network"`
 }
 
 func LoadFromFile() {
 	var filename string
-	if DebugMode {
+	if Configs.BuildInfo.DebugMode {
 		filename = "config_debug.json"
 	} else {
 		filename = "config.json"

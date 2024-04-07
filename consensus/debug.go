@@ -60,7 +60,7 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 	//控制节点连接其他节点
 	case "ConnectToOthers", "cto", "原神":
 		var nums, i int32
-		nums = d.NumReplicas
+		nums = d.Configs.BuildInfo.NumReplicas
 		for i = 1; i <= nums; i++ {
 			NewReplicaClient(i)
 		}
@@ -92,8 +92,9 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 		fmt.Printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
 		return &pb2.DebugMsg{}, nil
 	case "debug":
-		d.DebugMode = !d.DebugMode
-		log.Println("当前Debug状态: ", d.DebugMode)
+		BuildInfo := d.Configs.BuildInfo
+		BuildInfo.DebugMode = !BuildInfo.DebugMode
+		log.Println("当前Debug状态: ", BuildInfo.DebugMode)
 		return &pb2.DebugMsg{}, nil
 	case "syncinfo":
 		s := modules.MODULES.Synchronizer

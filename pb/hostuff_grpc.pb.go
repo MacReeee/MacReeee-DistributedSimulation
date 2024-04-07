@@ -158,7 +158,7 @@ func (c *hotstuffClient) Debug(ctx context.Context, in *DebugMsg, opts ...grpc.C
 	return out, nil
 }
 
-// HotstuffServer is the server API for Hotstuff service.
+// HotstuffServer is the hotstuff API for Hotstuff service.
 // All implementations must embed UnimplementedHotstuffServer
 // for forward compatibility
 type HotstuffServer interface {
