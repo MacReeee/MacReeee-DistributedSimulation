@@ -1,6 +1,7 @@
 package view
 
 import (
+	"context"
 	"distributed/modules"
 	pb2 "distributed/pb"
 	"log"
@@ -48,11 +49,12 @@ type SYNC struct {
 
 	timer     *time.Timer //每个视图的计时器
 	eventChan chan Event
+	ctx       context.Context
 
 	TimeoutChan chan bool
 }
 
-func NewSync() *SYNC {
+func NewSync(ctx context.Context) *SYNC {
 	s := &SYNC{
 		State:       Initializing,
 		mu:          sync.Mutex{},
@@ -65,6 +67,7 @@ func NewSync() *SYNC {
 		timeoutSwitching: false,
 		SwitchSuccess:    make(chan bool),
 		ViewSuccess:      make(chan bool),
+		ctx:              ctx,
 	}
 	s.view = *NewView(s)
 	s.cond = sync.NewCond(&s.mu)
@@ -195,8 +198,13 @@ func (s *SYNC) handleEvent(event Event) {
 
 // mainEventLoop 是事件循环，负责接收事件并将其传递给状态处理函数。
 func EventLoop(s *SYNC) {
-	for event := range s.eventChan {
-		go s.handleEvent(event)
+	for {
+		select {
+		case event := <-s.eventChan:
+			go s.handleEvent(event)
+		case <-s.ctx.Done():
+			return
+		}
 	}
 }
 

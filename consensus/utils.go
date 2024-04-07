@@ -66,6 +66,7 @@ type ReplicaServer struct {
 	threshold int
 	wg        stsync.WaitGroup
 	once      stsync.Once
+	ctx       context.Context
 
 	state State
 	cond  *stsync.Cond
@@ -80,12 +81,8 @@ type ReplicaServer struct {
 	pb2.UnimplementedHotstuffServer
 }
 
-func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
+func NewReplicaServer(id int32, ctx context.Context) (*grpc.Server, *net.Listener) {
 	addr := fmt.Sprintf(":%d", id+4000)
-	//if d.Configs.BuildInfo.DockerMode {
-	//	host := "node" + fmt.Sprintf("%d", id)
-	//	addr = fmt.Sprintf("%v:%d", host, id+4000)
-	//}
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Println("副本服务监听失败:", err)
@@ -121,6 +118,7 @@ func NewReplicaServer(id int32) (*grpc.Server, *net.Listener) {
 		count:          0,
 		wg:             stsync.WaitGroup{},
 		once:           stsync.Once{},
+		ctx:            ctx,
 		state:          Idle,
 		PrepareQC:      PrepareQC,
 		LockedQC:       LockedQC,

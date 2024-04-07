@@ -262,6 +262,8 @@ func (s *ReplicaServer) NextView() { //所有的wait for阶段超时都会调用
 			}
 			log.Println("向节点 ", sync.GetLeader(s.TempViewNumber), " 发送超时临时视图 ", s.TempViewNumber, " 的NewView消息，当前视图: ", *sync.ViewNumber())
 			leader.NewView(context.Background(), NewViewMsg)
+		case <-s.ctx.Done():
+			return
 		}
 		time.Sleep(10 * time.Millisecond)
 	}

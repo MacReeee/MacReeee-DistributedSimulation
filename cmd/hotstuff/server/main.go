@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"distributed/blockchain"
 	"distributed/consensus"
 	"distributed/cryp"
@@ -39,14 +40,24 @@ func main() { //此主函数用于启动服务端
 	}
 
 	for {
+		ctx, cancel := context.WithCancel(context.Background())
 		blockchain.NewBlockChain()
-		view.NewSync()
+		view.NewSync(ctx)
 		cryp.NewSignerByID(id)
+		server, listener := hotstuff.NewReplicaServer(id, ctx)
 
-		server, listener := hotstuff.NewReplicaServer(id)
 		log.Println("副本", id, "启动成功！")
 		go server.Serve(*listener)
 
-		<-modules.MODULES.Reset //接收到复位信号以后清理
+		//接收到复位信号以后清理
+		<-modules.MODULES.Reset
+		//关闭服务端
+		(*listener).Close()
+		server.Stop()
+		//发送关闭命令关闭各模块长期运行的协程
+		cancel()
+		modules.MODULES.ReSet()
+		return
+		d.LoadFromFile() //加载配置文件
 	}
 }

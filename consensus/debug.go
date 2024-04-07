@@ -106,6 +106,9 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 	case "PrintConfig":
 		d.ReadConfig()
 		return &pb2.DebugMsg{}, nil
+	case "reset", "r":
+		modules.MODULES.Reset <- true
+		return &pb2.DebugMsg{}, nil
 	default:
 		log.Println("未知的调试命令...")
 		return &pb2.DebugMsg{Response: "未知的调试命令: " + debug.Command}, nil

@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"distributed/dependency"
 	"distributed/middleware"
 	"distributed/pb"
 	"encoding/json"
@@ -15,7 +16,7 @@ type modules struct {
 	ReplicaServer       *grpc.Server
 	ReplicaServerStruct middleware.Server
 	ReplicaClient       map[int32]*pb.HotstuffClient
-	Reset               chan struct{} //复位信号
+	Reset               chan bool //复位信号
 
 	// Deprecated: Use CRYP instead
 	SignerAndVerifier middleware.Crypto
@@ -23,6 +24,14 @@ type modules struct {
 
 var MODULES = &modules{
 	ReplicaClient: make(map[int32]*pb.HotstuffClient),
+	Reset:         make(chan bool),
+}
+
+func (MODULES *modules) ReSet() {
+	MODULES = &modules{
+		ReplicaClient: make(map[int32]*pb.HotstuffClient, dependency.Configs.BuildInfo.NumReplicas),
+		Reset:         make(chan bool),
+	}
 }
 
 func (m *modules) MarshalToJSON() ([]byte, error) {
