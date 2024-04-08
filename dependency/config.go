@@ -42,11 +42,11 @@ func GetProcessTime() time.Duration {
 }
 
 func GetBASE_Timeout() time.Duration {
-	return Configs.Network.BASE_Timeout
+	return Configs.Network.BASE_Timeout * time.Millisecond
 }
 
 func GetMAX_Timeout() time.Duration {
-	return Configs.Network.MAX_Timeout
+	return Configs.Network.MAX_Timeout * time.Millisecond
 }
 
 func GenerateExpRand(lambda float64) float64 {
