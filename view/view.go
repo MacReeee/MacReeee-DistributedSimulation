@@ -61,9 +61,9 @@ func (v *View) Duration(s *SYNC) time.Duration {
 		return 1 * time.Second
 	}
 	mul := s.timeoutMul
-	if BASE_Timeout*mul > MAX_Timeout {
-		return MAX_Timeout
+	if d.Configs.Network.BASE_Timeout*mul > d.Configs.Network.MAX_Timeout {
+		return d.Configs.Network.MAX_Timeout
 	} else {
-		return BASE_Timeout * mul
+		return d.Configs.Network.BASE_Timeout * mul
 	}
 }

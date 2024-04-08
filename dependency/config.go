@@ -25,8 +25,10 @@ type Buildinfo struct {
 
 type network struct {
 	// 注意分布是指数分布
-	Latency     time.Duration //包含区块的传输延迟均值
-	ProcessTime time.Duration //投票和不含区块的处理和传输时延
+	Latency      time.Duration //包含区块的传输延迟均值
+	ProcessTime  time.Duration //投票和不含区块的处理和传输时延
+	BASE_Timeout time.Duration //基础超时时间
+	MAX_Timeout  time.Duration //最大超时时间
 }
 
 func GetLatency() time.Duration {
@@ -37,6 +39,14 @@ func GetLatency() time.Duration {
 func GetProcessTime() time.Duration {
 	ProcessTime := time.Duration(GenerateExpRand(float64(Configs.Network.ProcessTime)))
 	return ProcessTime * time.Millisecond
+}
+
+func GetBASE_Timeout() time.Duration {
+	return Configs.Network.BASE_Timeout
+}
+
+func GetMAX_Timeout() time.Duration {
+	return Configs.Network.MAX_Timeout
 }
 
 func GenerateExpRand(lambda float64) float64 {

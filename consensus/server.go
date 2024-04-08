@@ -283,8 +283,6 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 			//模拟包含区块的传输时延
 			time.Sleep(d.GetLatency())
 
-			time.Sleep(10 * time.Millisecond)
-
 			log.Println("尝试发送视图 ", *sync.ViewNumber()+1, " 的提案 ")
 
 			for _, client := range modules.MODULES.ReplicaClient {

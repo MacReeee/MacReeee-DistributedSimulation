@@ -11,3 +11,5 @@ docker run -dit \
 
 
 docker exec -it console /bin/bash
+
+tmux attach -t console

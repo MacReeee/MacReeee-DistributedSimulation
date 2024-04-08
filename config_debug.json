@@ -7,6 +7,8 @@
     },
     "Network": {
         "Latency": 0,
-        "ProcessTime": 0
+        "ProcessTime": 0,
+        "BASE_Timeout": 5,
+        "MAX_Timeout": 10
     }
 }
