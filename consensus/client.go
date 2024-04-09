@@ -80,7 +80,7 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb2.Proposal) (*e
 	//log.Println("视图 ", *sync.ViewNumber(), " 的领导者是: ", sync.GetLeader())
 
 	//模拟投票处理和传输时延
-	time.Sleep(d.GetProcessTime())
+	time.Sleep(d.GetLatency())
 
 	go leader.VotePrepare(context.Background(), PrepareVoteMsg)
 	return &emptypb.Empty{}, nil
@@ -93,14 +93,39 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb2.Precomm
 		cryp  = modules.MODULES.Signer
 		chain = modules.MODULES.Chain
 	)
+
+	//确保消息来自主节点
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", PrecommitMsg.Id, " 的PreCommit消息")
+	if PrecommitMsg.Id != sync.GetLeader(PrecommitMsg.ViewNumber) {
+		log.Println("Precommit消息的提议者不是当前视图的领导者")
+		return nil, fmt.Errorf("PrecommitMsg is not valid")
+	}
+
+	//检查提案是否满足接收条件
+	if !s.VoteRulePreCommit(PrecommitMsg) {
+		log.Println("Precommit消息不安全")
+		return nil, fmt.Errorf("PrecommitMsg is not valid")
+	}
+
+	//检查区块的视图号/高度是否满足同一高度仅能投票一次
 	if PrecommitMsg.ViewNumber < s.lastVote {
 		log.Println("PreCommit 消息的视图号小于上一次投票的视图号，拒绝投票")
 		return nil, fmt.Errorf("PreCommit Msg is too old")
 	}
-	if ok, err := MatchingMsg(PrecommitMsg.MsgType, PrecommitMsg.ViewNumber, pb2.MsgType_PRE_COMMIT, *sync.ViewNumber()); !ok {
-		return nil, err
+
+	// 切换到合适视图
+	if *sync.ViewNumber() < PrecommitMsg.ViewNumber {
+		sync.ViewNumberSet(PrecommitMsg.ViewNumber)
+		s.TempViewNumber = PrecommitMsg.ViewNumber
+		once := sync.GetOnly()
+		once.Do(sync.Success)
 	}
+
+	s.lastVote = PrecommitMsg.ViewNumber
+
+	//if ok, err := MatchingMsg(PrecommitMsg.MsgType, PrecommitMsg.ViewNumber, pb2.MsgType_PRE_COMMIT, *sync.ViewNumber()); !ok {
+	//	return nil, err
+	//}
 
 	s.PrepareQC = PrecommitMsg.Qc //更新PrepareQC
 
@@ -128,7 +153,7 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb2.Precomm
 	leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 
 	//模拟投票处理和传输时延
-	time.Sleep(d.GetProcessTime())
+	time.Sleep(d.GetLatency())
 
 	go leader.VotePreCommit(context.Background(), PreCommitVoteMsg)
 	return &emptypb.Empty{}, nil
@@ -142,13 +167,38 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb2.CommitMsg) (*
 		chain = modules.MODULES.Chain
 	)
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", CommitMsg.Id, " 的Commit消息")
+
+	//确保消息来自主节点
+	if CommitMsg.Id != sync.GetLeader(CommitMsg.ViewNumber) {
+		log.Println("Commit消息的提议者不是当前视图的领导者")
+		return nil, fmt.Errorf("CommitMsg is not valid")
+	}
+
+	//检查提案是否满足接收条件
+	if !s.VoteRuleCommit(CommitMsg) {
+		log.Println("Commit消息不安全")
+		return nil, fmt.Errorf("CommitMsg is not valid")
+	}
+
+	//检查区块的视图号/高度是否满足同一高度仅能投票一次
 	if CommitMsg.ViewNumber < s.lastVote {
 		log.Println("CommitMsg 消息的视图号小于上一次投票的视图号，拒绝投票")
 		return nil, fmt.Errorf("CommitMsg Msg is too old")
 	}
-	if ok, err := MatchingMsg(CommitMsg.MsgType, CommitMsg.ViewNumber, pb2.MsgType_COMMIT, *sync.ViewNumber()); !ok {
-		return nil, err
+
+	// 切换到合适视图
+	if *sync.ViewNumber() < CommitMsg.ViewNumber {
+		sync.ViewNumberSet(CommitMsg.ViewNumber)
+		s.TempViewNumber = CommitMsg.ViewNumber
+		once := sync.GetOnly()
+		once.Do(sync.Success)
 	}
+
+	s.lastVote = CommitMsg.ViewNumber
+
+	//if ok, err := MatchingMsg(CommitMsg.MsgType, CommitMsg.ViewNumber, pb2.MsgType_COMMIT, *sync.ViewNumber()); !ok {
+	//	return nil, err
+	//}
 
 	s.LockedQC = CommitMsg.Qc //更新LockedQC
 
@@ -175,7 +225,7 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb2.CommitMsg) (*
 	leader = *modules.MODULES.ReplicaClient[sync.GetLeader()]
 
 	//模拟投票处理和传输时延
-	time.Sleep(d.GetProcessTime())
+	time.Sleep(d.GetLatency())
 
 	go leader.VoteCommit(context.Background(), CommitVoteMsg)
 	return &emptypb.Empty{}, nil
@@ -189,13 +239,38 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb2.DecideMsg) (*
 		chain = modules.MODULES.Chain
 	)
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", DecideMsg.Id, " 的Decide消息")
+
+	//确保消息来自主节点
+	if DecideMsg.Id != sync.GetLeader(DecideMsg.ViewNumber) {
+		log.Println("Decide消息的提议者不是当前视图的领导者")
+		return nil, fmt.Errorf("DecideMsg is not valid")
+	}
+
+	//检查提案是否满足接收条件
+	if !s.VoteRuleDecide(DecideMsg) {
+		log.Println("Decide消息不安全")
+		return nil, fmt.Errorf("DecideMsg is not valid")
+	}
+
+	//检查区块的视图号/高度是否满足同一高度仅能投票一次
 	if DecideMsg.ViewNumber < s.lastVote {
 		log.Println("DecideMsg 消息的视图号小于上一次投票的视图号，拒绝投票")
 		return nil, fmt.Errorf("DecideMsg Msg is too old")
 	}
-	if ok, err := MatchingMsg(DecideMsg.MsgType, DecideMsg.ViewNumber, pb2.MsgType_DECIDE, *sync.ViewNumber()); !ok {
-		return nil, err
+
+	// 切换到合适视图
+	if *sync.ViewNumber() < DecideMsg.ViewNumber {
+		sync.ViewNumberSet(DecideMsg.ViewNumber)
+		s.TempViewNumber = DecideMsg.ViewNumber
+		once := sync.GetOnly()
+		once.Do(sync.Success)
 	}
+
+	s.lastVote = DecideMsg.ViewNumber
+
+	//if ok, err := MatchingMsg(DecideMsg.MsgType, DecideMsg.ViewNumber, pb2.MsgType_DECIDE, *sync.ViewNumber()); !ok {
+	//	return nil, err
+	//}
 	sync.TimerReset()
 	s.SetState(Switching)
 
@@ -224,7 +299,7 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb2.DecideMsg) (*
 	leader = *modules.MODULES.ReplicaClient[sync.GetLeader(*sync.ViewNumber()+1)]
 
 	//模拟投票处理和传输时延
-	time.Sleep(d.GetProcessTime())
+	time.Sleep(d.GetLatency())
 
 	go leader.NewView(context.Background(), NewViewMsg)
 	return &emptypb.Empty{}, nil

@@ -100,6 +100,7 @@ func (bc *Blockchain) GetBlock(hash []byte) *pb.Block {
 		for _, client := range modules.MODULES.ReplicaClient {
 			b, _ := (*client).GetBlock(context.Background(), &pb.SyncBlock{Hash: string(hash)})
 			if b != nil {
+				bc.Store(b)
 				return b
 			}
 		}

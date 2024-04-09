@@ -30,7 +30,9 @@ type network struct {
 }
 
 func GetLatency() time.Duration {
-	latency := time.Duration(GenerateExpRand(float64(Configs.Network.Latency)))
+	configLatency := Configs.Network.Latency
+	random := GenerateExpRand(float64(configLatency))
+	latency := time.Duration(random)
 	return latency * time.Millisecond
 }
 
@@ -40,5 +42,5 @@ func GetProcessTime() time.Duration {
 }
 
 func GenerateExpRand(lambda float64) float64 {
-	return r.ExpFloat64() / lambda
+	return r.ExpFloat64() * lambda
 }

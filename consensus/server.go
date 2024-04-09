@@ -75,9 +75,10 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb2.VoteRequest) 
 			}
 
 			//模拟投票处理和传输时延
-			time.Sleep(d.GetProcessTime())
+			time.Sleep(d.GetLatency())
 
 			for _, client := range modules.MODULES.ReplicaClient {
+				time.Sleep(d.GetProcessTime())
 				go (*client).PreCommit(context.Background(), PreCommitMsg)
 			}
 			s.count = 0 //重置计数器
@@ -95,17 +96,19 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb2.VoteRequest
 		chain = modules.MODULES.Chain
 	)
 
-	//如果已经触发阈值条件，不在接收后续的PreCommit投票
-	//_, _, once := sync.GetVoter(pb.MsgType_PRE_COMMIT_VOTE)
-	once := sync.GetOnce(pb2.MsgType_PRE_COMMIT_VOTE)
-	if once.IsDone() {
-		return nil, nil
+	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的PreCommit投票")
+	//检查类型
+	if vote.MsgType != pb2.MsgType_PRE_COMMIT_VOTE {
+		log.Println("Pre_Commit投票 消息类型不匹配")
+		return &emptypb.Empty{}, fmt.Errorf("Pre_Commit vote type is not valid")
 	}
 
-	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的PreCommit投票")
-	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb2.MsgType_PRE_COMMIT_VOTE, *sync.ViewNumber()); !ok {
-		return nil, err
+	//判断视图号
+	if vote.ViewNumber < *sync.ViewNumber() {
+		log.Println("Pre_Commit投票过旧")
+		return &emptypb.Empty{}, fmt.Errorf("Pre_Commit vote view number is not valid")
 	}
+
 	// 签名校验
 	msg := []byte(fmt.Sprintf("%d,%d,%x", vote.MsgType, vote.ViewNumber, vote.Hash))
 	if !cryp.Verify(vote.Voter, msg, vote.Signature) {
@@ -113,6 +116,7 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb2.VoteRequest
 		return nil, fmt.Errorf("Pre_Commit Vote 的签名验证失败")
 	}
 	count := sync.StoreVote(pb2.MsgType_PRE_COMMIT_VOTE, vote)
+	once := sync.GetOnce(pb2.MsgType_PRE_COMMIT_VOTE)
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		sync.TimerReset() //重置计时器
 		voters, sigs, _ := sync.GetVoter(pb2.MsgType_PRE_COMMIT_VOTE)
@@ -143,9 +147,10 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb2.VoteRequest
 			}
 
 			//模拟投票处理和传输时延
-			time.Sleep(d.GetProcessTime())
+			time.Sleep(d.GetLatency())
 
 			for _, client := range modules.MODULES.ReplicaClient {
+				time.Sleep(d.GetProcessTime())
 				go (*client).Commit(context.Background(), CommitMsg)
 			}
 			s.count = 0 //重置计数器
@@ -164,22 +169,25 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb2.VoteRequest) (
 	)
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的Commit投票")
 
-	//如果已经触发阈值条件，不在接收后续的Commit投票
-	//_, _, once := sync.GetVoter(pb.MsgType_COMMIT_VOTE)
-	once := sync.GetOnce(pb2.MsgType_COMMIT_VOTE)
-	if once.IsDone() {
-		return nil, nil
+	//检查类型
+	if vote.MsgType != pb2.MsgType_COMMIT_VOTE {
+		log.Println("Commit投票 消息类型不匹配")
+		return &emptypb.Empty{}, fmt.Errorf("Commit vote type is not valid")
 	}
 
-	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb2.MsgType_COMMIT_VOTE, *sync.ViewNumber()); !ok {
-		return nil, err
+	//判断视图号
+	if vote.ViewNumber < *sync.ViewNumber() {
+		log.Println("Commit投票过旧")
+		return &emptypb.Empty{}, fmt.Errorf("Commit vote view number is not valid")
 	}
+
 	// 签名校验
 	msg := []byte(fmt.Sprintf("%d,%d,%x", vote.MsgType, vote.ViewNumber, vote.Hash))
 	if !cryp.Verify(vote.Voter, msg, vote.Signature) {
 		return nil, fmt.Errorf("commit vote signature is not valid")
 	}
 	count := sync.StoreVote(pb2.MsgType_COMMIT_VOTE, vote)
+	once := sync.GetOnce(pb2.MsgType_COMMIT_VOTE)
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		sync.TimerReset() //重置计时器
 		voters, sigs, _ := sync.GetVoter(pb2.MsgType_COMMIT_VOTE)
@@ -210,9 +218,10 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb2.VoteRequest) (
 			}
 
 			//模拟投票处理和传输时延
-			time.Sleep(d.GetProcessTime())
+			time.Sleep(d.GetLatency())
 
 			for _, client := range modules.MODULES.ReplicaClient {
+				time.Sleep(d.GetProcessTime())
 				go (*client).Decide(context.Background(), DecideMsg)
 			}
 			s.count = 0 //重置计数器
@@ -230,12 +239,6 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 		chain = modules.MODULES.Chain
 	)
 	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", NewViewMsg.Voter, " 的NewView消息")
-
-	//如果已经触发阈值条件，不在接收后续的NewView消息
-	once := sync.GetOnce(pb2.MsgType_NEW_VIEW)
-	//if once.IsDone() {
-	//	return nil, nil
-	//}
 
 	if NewViewMsg.MsgType != pb2.MsgType_NEW_VIEW {
 		log.Println("NewView消息类型不匹配")
@@ -255,6 +258,7 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 		return nil, fmt.Errorf("newview msg signature is not valid")
 	}
 	count := sync.StoreVote(pb2.MsgType_NEW_VIEW, nil, NewViewMsg)
+	once := sync.GetOnce(pb2.MsgType_NEW_VIEW)
 	if count >= s.threshold { //条件达成，开始执行下一阶段
 		log.Println("视图 ", *sync.ViewNumber(), " 的NewView消息达成阈值")
 		sync.TimerReset() //重置计时器
@@ -283,11 +287,10 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 			//模拟包含区块的传输时延
 			time.Sleep(d.GetLatency())
 
-			time.Sleep(10 * time.Millisecond)
-
 			log.Println("尝试发送视图 ", *sync.ViewNumber()+1, " 的提案 ")
 
 			for _, client := range modules.MODULES.ReplicaClient {
+				time.Sleep(d.GetProcessTime())
 				go (*client).Prepare(context.Background(), ProposalMsg)
 			}
 

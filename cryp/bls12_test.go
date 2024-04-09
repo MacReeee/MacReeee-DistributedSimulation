@@ -455,18 +455,29 @@ func Test_TestVerify(t *testing.T) {
 
 // 公私钥对生成器
 func Test_GenerateKeyPair2(t *testing.T) {
-	privKey, pubKey := bls.NewKeyPair(suite, random.New())
-	s, _ := privKey.MarshalBinary()
-	p, _ := pubKey.MarshalBinary()
-	//将公私钥转换成16进制字符串
-	privHex := hex.EncodeToString(s)
-	pubHex := hex.EncodeToString(p)
-	fmt.Println("priv (hex): ", privHex)
-	fmt.Println("pub (hex): ", pubHex)
+	var ss, ps []string
+	for i := 0; i < 30; i++ {
+		privKey, pubKey := bls.NewKeyPair(suite, random.New())
+		s, _ := privKey.MarshalBinary()
+		p, _ := pubKey.MarshalBinary()
+		//将公私钥转换成16进制字符串
+		privHex := hex.EncodeToString(s)
+		pubHex := hex.EncodeToString(p)
+		ss = append(ss, privHex)
+		ps = append(ps, pubHex)
+	}
+	fmt.Println("priv (hex): ")
+	for _, v := range ss {
+		fmt.Printf("\"%s\",\n", v)
+	}
+	fmt.Println("pub (hex): ")
+	for _, v := range ps {
+		fmt.Printf("\"%s\",\n", v)
+	}
 }
 
 func Test_NewKeyPair(t *testing.T) {
-	var i int32 = 10
+	var i int32 = 40
 	signer5 := NewSignerByID(i)
 	msg := []byte("hello world")
 	sig5, _ := signer5.NormSign(msg)

@@ -44,6 +44,20 @@ func (s *SYNC) Timeout() <-chan bool {
 }
 
 func (s *SYNC) StoreVote(msgType pb2.MsgType, NormalMsg *pb2.VoteRequest, NewViewMsg ...*pb2.NewViewMsg) int {
+	if NormalMsg != nil {
+		if NormalMsg.ViewNumber != s.CurrentView {
+			log.Println("当前视图号: ", s.CurrentView, " 接收到的", msgType, "投票的视图号: ", NormalMsg.ViewNumber)
+			return 0
+		}
+	}
+	if NewViewMsg != nil {
+		for _, msg := range NewViewMsg {
+			if !(msg.ViewNumber > s.CurrentView) {
+				log.Println("当前视图号: ", s.CurrentView, " 接收到的", msgType, "投票的视图号: ", msg.ViewNumber)
+				return 0
+			}
+		}
+	}
 	s.view.mu.Lock()
 	defer s.view.mu.Unlock()
 	if NormalMsg != nil {
