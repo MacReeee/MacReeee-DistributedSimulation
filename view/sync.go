@@ -2,6 +2,7 @@ package view
 
 import (
 	"context"
+	"distributed/dependency"
 	"distributed/modules"
 	pb2 "distributed/pb"
 	"log"
@@ -59,7 +60,7 @@ func NewSync(ctx context.Context) *SYNC {
 		State:       Initializing,
 		mu:          sync.Mutex{},
 		CurrentView: 0,
-		max:         MAX_Timeout,
+		max:         dependency.GetMAX_Timeout(),
 		timeoutMul:  1,
 
 		TimeoutChan:      make(chan bool, 1),
@@ -140,11 +141,11 @@ func (s *SYNC) handleTimeout() {
 	log.Println("视图 ", s.CurrentView, " 超时")
 
 	// 重置超时倍数
-	if s.timeoutMul < MAX_Timeout/BASE_Timeout {
+	if s.timeoutMul < dependency.GetMAX_Timeout()/dependency.GetBASE_Timeout() {
 		s.timeoutMul *= 2
 	} else {
 		// 达到最大倍数时，保持不变或设置为最大超时倍数的值
-		s.timeoutMul = MAX_Timeout / BASE_Timeout
+		s.timeoutMul = dependency.GetMAX_Timeout() / dependency.GetBASE_Timeout()
 	}
 
 	s.view.once[pb2.MsgType_NEW_VIEW].Reset()

@@ -93,6 +93,14 @@ func (bc *Blockchain) StoreToTemp(block *pb.Block) {
 
 // 给定区块的哈希，查找对应的区块
 func (bc *Blockchain) GetBlock(hash []byte) *pb.Block {
+	defer func() {
+		r := recover()
+		if r != nil {
+			FuncName := "GetBlock"
+			log.Println(FuncName, "函数异常", r)
+			panic(r)
+		}
+	}()
 	bc.Mut.Lock()
 	defer bc.Mut.Unlock()
 	block := bc.Blocks[string(hash)]

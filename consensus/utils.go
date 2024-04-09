@@ -183,6 +183,14 @@ func (s *ReplicaServer) WaitForState(state State) {
 }
 
 func (s *ReplicaServer) SetState(state State) {
+	defer func() {
+		r := recover()
+		if r != nil {
+			FuncName := "SetState"
+			log.Println(FuncName, "函数异常", r)
+			panic(r)
+		}
+	}()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.state = state
