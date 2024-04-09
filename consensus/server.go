@@ -21,7 +21,7 @@ func (s *ReplicaServer) VotePrepare(ctx context.Context, vote *pb2.VoteRequest) 
 		chain = modules.MODULES.Chain
 	)
 
-	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的Prepare投票")
+	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.ViewNumber, "节点:", vote.Voter, " 的Prepare投票")
 
 	//检查类型
 	if vote.MsgType != pb2.MsgType_PREPARE_VOTE {
@@ -102,7 +102,7 @@ func (s *ReplicaServer) VotePreCommit(ctx context.Context, vote *pb2.VoteRequest
 		return nil, nil
 	}
 
-	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的PreCommit投票")
+	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.ViewNumber, "节点:", vote.Voter, " 的PreCommit投票")
 	if ok, err := MatchingMsg(vote.MsgType, vote.ViewNumber, pb2.MsgType_PRE_COMMIT_VOTE, *sync.ViewNumber()); !ok {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func (s *ReplicaServer) VoteCommit(ctx context.Context, vote *pb2.VoteRequest) (
 		cryp  = modules.MODULES.Signer
 		chain = modules.MODULES.Chain
 	)
-	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.Voter, " 的Commit投票")
+	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", vote.ViewNumber, "节点:", vote.Voter, " 的Commit投票")
 
 	//如果已经触发阈值条件，不在接收后续的Commit投票
 	//_, _, once := sync.GetVoter(pb.MsgType_COMMIT_VOTE)
@@ -229,19 +229,23 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 		cryp  = modules.MODULES.Signer
 		chain = modules.MODULES.Chain
 	)
-	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自 ", NewViewMsg.Voter, " 的NewView消息")
+	log.Println("视图 ", *sync.ViewNumber(), ":接收到来自视图： ", NewViewMsg.ViewNumber, "节点：", NewViewMsg.Voter, " 的NewView消息")
 
-	//如果已经触发阈值条件，不在接收后续的NewView消息
 	once := sync.GetOnce(pb2.MsgType_NEW_VIEW)
-	//if once.IsDone() {
-	//	return nil, nil
-	//}
 
+	//检查类型
 	if NewViewMsg.MsgType != pb2.MsgType_NEW_VIEW {
 		log.Println("NewView消息类型不匹配")
 		return nil, fmt.Errorf("newview msg type is not valid")
 	}
 
+	//判断视图号
+	if NewViewMsg.ViewNumber < *sync.ViewNumber() {
+		log.Println("NewView消息的视图号小于当前视图号")
+		return nil, fmt.Errorf("newview msg view number is not valid")
+	}
+
+	//判断是否是当前视图的领导者
 	if sync.GetLeader(NewViewMsg.ViewNumber) != s.ID {
 		log.Println("不是当前视图的领导者")
 		return nil, fmt.Errorf("not the leader of this view")

@@ -44,6 +44,12 @@ func (s *SYNC) Timeout() <-chan bool {
 }
 
 func (s *SYNC) StoreVote(msgType pb2.MsgType, NormalMsg *pb2.VoteRequest, NewViewMsg ...*pb2.NewViewMsg) int {
+	//if NormalMsg != nil && NormalMsg.ViewNumber != s.CurrentView {
+	//	return 0
+	//}
+	//if len(NewViewMsg) != 0 && NewViewMsg[0].ViewNumber != s.CurrentView {
+	//	return 0
+	//}
 	s.view.mu.Lock()
 	defer s.view.mu.Unlock()
 	if NormalMsg != nil {
@@ -157,6 +163,14 @@ func (s *SYNC) ViewNumberPP() {
 }
 
 func (s *SYNC) ViewNumberSet(v int64) {
+	defer func() {
+		r := recover()
+		if r != nil {
+			FuncName := "GetBlock"
+			log.Println(FuncName, "函数异常", r)
+			panic(r)
+		}
+	}()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.CurrentView = v

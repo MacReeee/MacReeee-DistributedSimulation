@@ -7,6 +7,14 @@ import (
 )
 
 func (s *ReplicaServer) VoteRule(proposal *pb.Proposal) bool {
+	defer func() {
+		r := recover()
+		if r != nil {
+			FuncName := "VoteRule"
+			log.Println(FuncName, "函数异常", r)
+			panic(r)
+		}
+	}()
 	var (
 		sync  = modules.MODULES.Synchronizer
 		chain = modules.MODULES.Chain
