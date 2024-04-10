@@ -278,7 +278,7 @@ func (s *ReplicaServer) NewView(ctx context.Context, NewViewMsg *pb2.NewViewMsg)
 				// Aggqc: nil, //hotstuff中用不到
 				// ProposalId: 0, //暂未获取，未考虑清楚是否需要该字段
 				Proposer:   s.ID,
-				ViewNumber: *sync.ViewNumber() + 1,
+				ViewNumber: HighQC.ViewNumber + 1,
 				Signature:  sig,
 				// Timestamp:  0, //暂时用不到
 				MsgType: pb2.MsgType_PREPARE,

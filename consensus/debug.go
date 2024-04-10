@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	stsync "sync"
+	"time"
 )
 
 var (
@@ -50,6 +51,8 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 				MsgType:    pb2.MsgType_PREPARE,
 			}
 			clients := modules.MODULES.ReplicaClient
+			fmt.Println("等待", d.Configs.BuildInfo.NumReplicas/2, "秒后开始发送提案...")
+			time.Sleep(500 * time.Duration(d.Configs.BuildInfo.NumReplicas) / 2 * time.Millisecond) //防止节点过多时还有节点未接收到启动命令
 			for _, client := range clients {
 				go (*client).Prepare(context.Background(), ProposalMsg)
 			}
@@ -84,6 +87,10 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 		StopFlag = true
 		wg.Add(1)
 		return &pb2.DebugMsg{Response: "已暂停仿真"}, nil
+	case "testLatency", "tl":
+		log.Println("当前传输时延抽样: ", d.GetLatency())
+		log.Println("当前处理时延抽样: ", d.GetProcessTime())
+		return &pb2.DebugMsg{}, nil
 	case "resume":
 		StopFlag = false
 		wg.Done()
