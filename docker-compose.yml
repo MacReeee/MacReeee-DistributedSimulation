@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   node1:
-    image: firrsdocker/hotstuff:2
+    image: firrsdocker/hotstuff:3
     container_name: node1
     volumes:
       - ./:/home/hotstuff/distributedHotstuff
@@ -13,7 +13,7 @@ services:
     command: [ "./hotstuff", "-id", "1" ]
 
   node2:
-    image: firrsdocker/hotstuff:2
+    image: firrsdocker/hotstuff:3
     container_name: node2
     volumes:
       - ./:/home/hotstuff/distributedHotstuff
@@ -24,7 +24,7 @@ services:
     command: [ "./hotstuff", "-id", "2" ]
 
   node3:
-    image: firrsdocker/hotstuff:2
+    image: firrsdocker/hotstuff:3
     container_name: node3
     volumes:
       - ./:/home/hotstuff/distributedHotstuff
@@ -35,7 +35,7 @@ services:
     command: [ "./hotstuff", "-id", "3" ]
 
   node4:
-    image: firrsdocker/hotstuff:2
+    image: firrsdocker/hotstuff:3
     container_name: node4
     volumes:
       - ./:/home/hotstuff/distributedHotstuff
@@ -46,7 +46,7 @@ services:
     command: [ "./hotstuff", "-id", "4" ]
 
   node5:
-    image: firrsdocker/hotstuff:2
+    image: firrsdocker/hotstuff:3
     container_name: node5
     volumes:
       - ./:/home/hotstuff/distributedHotstuff
@@ -57,7 +57,7 @@ services:
     command: [ "./hotstuff", "-id", "5" ]
 
   node6:
-    image: firrsdocker/hotstuff:2
+    image: firrsdocker/hotstuff:3
     container_name: node6
     volumes:
       - ./:/home/hotstuff/distributedHotstuff
@@ -68,7 +68,7 @@ services:
     command: [ "./hotstuff", "-id", "6" ]
 
   node7:
-    image: firrsdocker/hotstuff:2
+    image: firrsdocker/hotstuff:3
     container_name: node7
     volumes:
       - ./:/home/hotstuff/distributedHotstuff
@@ -77,270 +77,270 @@ services:
     networks:
       - HotStuff
     command: [ "./hotstuff", "-id", "7" ]
-
-  node8:
-    image: firrsdocker/hotstuff:2
-    container_name: node8
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "8" ]
-
-  node9:
-    image: firrsdocker/hotstuff:2
-    container_name: node9
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "9" ]
-
-  node10:
-    image: firrsdocker/hotstuff:2
-    container_name: node10
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "10" ]
-
-  node11:
-    image: firrsdocker/hotstuff:2
-    container_name: node11
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "11" ]
-
-  node12:
-    image: firrsdocker/hotstuff:2
-    container_name: node12
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "12" ]
-
-  node13:
-    image: firrsdocker/hotstuff:2
-    container_name: node13
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "13" ]
-
-  node14:
-    image: firrsdocker/hotstuff:2
-    container_name: node14
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "14" ]
-
-  node15:
-    image: firrsdocker/hotstuff:2
-    container_name: node15
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "15" ]
-
-  node16:
-    image: firrsdocker/hotstuff:2
-    container_name: node16
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "16" ]
-
-  node17:
-    image: firrsdocker/hotstuff:2
-    container_name: node17
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "17" ]
-
-  node18:
-    image: firrsdocker/hotstuff:2
-    container_name: node18
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "18" ]
-
-  node19:
-    image: firrsdocker/hotstuff:2
-    container_name: node19
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "19" ]
-
-  node20:
-    image: firrsdocker/hotstuff:2
-    container_name: node20
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "20" ]
-
-  node21:
-    image: firrsdocker/hotstuff:2
-    container_name: node21
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "21" ]
-
-  node22:
-    image: firrsdocker/hotstuff:2
-    container_name: node22
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "22" ]
-
-  node23:
-    image: firrsdocker/hotstuff:2
-    container_name: node23
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "23" ]
-
-  node24:
-    image: firrsdocker/hotstuff:2
-    container_name: node24
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "24" ]
-
-  node25:
-    image: firrsdocker/hotstuff:2
-    container_name: node25
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "25" ]
-
-  node26:
-    image: firrsdocker/hotstuff:2
-    container_name: node26
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "26" ]
-
-  node27:
-    image: firrsdocker/hotstuff:2
-    container_name: node27
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "27" ]
-
-  node28:
-    image: firrsdocker/hotstuff:2
-    container_name: node28
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "28" ]
-
-  node29:
-    image: firrsdocker/hotstuff:2
-    container_name: node29
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "29" ]
-
-  node30:
-    image: firrsdocker/hotstuff:2
-    container_name: node30
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "30" ]
-
-  node31:
-    image: firrsdocker/hotstuff:2
-    container_name: node31
-    volumes:
-      - ./:/home/hotstuff/distributedHotstuff
-    user: "hotstuff"
-    working_dir: /home/hotstuff/distributedHotstuff
-    networks:
-      - HotStuff
-    command: [ "./hotstuff", "-id", "31" ]
+#
+#  node8:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node8
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "8" ]
+#
+#  node9:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node9
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "9" ]
+#
+#  node10:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node10
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "10" ]
+#
+#  node11:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node11
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "11" ]
+#
+#  node12:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node12
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "12" ]
+#
+#  node13:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node13
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "13" ]
+#
+#  node14:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node14
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "14" ]
+#
+#  node15:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node15
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "15" ]
+#
+#  node16:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node16
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "16" ]
+#
+#  node17:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node17
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "17" ]
+#
+#  node18:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node18
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "18" ]
+#
+#  node19:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node19
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "19" ]
+#
+#  node20:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node20
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "20" ]
+#
+#  node21:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node21
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "21" ]
+#
+#  node22:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node22
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "22" ]
+#
+#  node23:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node23
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "23" ]
+#
+#  node24:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node24
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "24" ]
+#
+#  node25:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node25
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "25" ]
+#
+#  node26:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node26
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "26" ]
+#
+#  node27:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node27
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "27" ]
+#
+#  node28:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node28
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "28" ]
+#
+#  node29:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node29
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "29" ]
+#
+#  node30:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node30
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "30" ]
+#
+#  node31:
+#    image: firrsdocker/hotstuff:3
+#    container_name: node31
+#    volumes:
+#      - ./:/home/hotstuff/distributedHotstuff
+#    user: "hotstuff"
+#    working_dir: /home/hotstuff/distributedHotstuff
+#    networks:
+#      - HotStuff
+#    command: [ "./hotstuff", "-id", "31" ]
 
 
 networks:

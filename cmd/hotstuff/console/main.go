@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func main() {
+func main1() {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("输入节点数量: ")
 	numStr, _ := reader.ReadString('\n')
@@ -99,6 +99,38 @@ func main() {
 var commandList = []string{
 	"OutputBlocks", "PrintViewNumber", "ViewSuccess", "CrossCall",
 	"PrintSelfID", "ConnectToOthers", "Start",
+}
+
+func main() {
+	reader := bufio.NewReader(os.Stdin)
+	d.LoadFromFile()
+	num := int(d.Configs.BuildInfo.NumReplicas)
+	all := make([]int32, num)
+	for i := 1; i <= num; i++ {
+		all[i-1] = int32(i)
+	}
+	for {
+		fmt.Println("Command: ")
+		cmd, _ := reader.ReadString('\n')
+		cmd = strings.TrimSpace(cmd)
+		if cmd == "exit" {
+			return
+		} else if cmd == "sa10" {
+			Command("sa", all...)
+			fmt.Println("等待10 min...")
+			<-time.After(10 * time.Minute)
+			Command("pause", all...)
+		} else if cmd == "re" || cmd == "reload" {
+			d.LoadFromFile()
+			num = int(d.Configs.BuildInfo.NumReplicas)
+			all = make([]int32, num)
+			for i := 1; i <= num; i++ {
+				all[i-1] = int32(i)
+			}
+		}
+		Command(cmd, all...)
+		fmt.Printf("\n")
+	}
 }
 
 func Command(command string, targetid ...int32) {

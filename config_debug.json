@@ -1,7 +1,7 @@
 {
     "BuildInfo": {
         "DebugMode": true,
-        "DockerMode": false,
+        "DockerMode": true,
         "Threshold": 4,
         "NumReplicas": 7
     },
