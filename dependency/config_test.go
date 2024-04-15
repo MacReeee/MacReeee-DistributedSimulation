@@ -29,6 +29,7 @@ func Test_ToFile(t *testing.T) {
 			DockerMode:  false,
 			Threshold:   6,
 			NumReplicas: 10,
+			DenyVote:    []int32{1, 2, 3},
 		},
 		network{
 			Latency:     100,

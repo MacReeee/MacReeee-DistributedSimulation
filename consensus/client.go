@@ -81,8 +81,9 @@ func (s *ReplicaServer) Prepare(ctx context.Context, Proposal *pb2.Proposal) (*e
 
 	//模拟投票处理和传输时延
 	time.Sleep(d.GetLatency())
-
-	go leader.VotePrepare(context.Background(), PrepareVoteMsg)
+	if !d.DenyVote {
+		go leader.VotePrepare(context.Background(), PrepareVoteMsg)
+	}
 	return &emptypb.Empty{}, nil
 }
 
@@ -155,7 +156,9 @@ func (s *ReplicaServer) PreCommit(ctx context.Context, PrecommitMsg *pb2.Precomm
 	//模拟投票处理和传输时延
 	time.Sleep(d.GetLatency())
 
-	go leader.VotePreCommit(context.Background(), PreCommitVoteMsg)
+	if !d.DenyVote {
+		go leader.VotePreCommit(context.Background(), PreCommitVoteMsg)
+	}
 	return &emptypb.Empty{}, nil
 }
 
@@ -227,7 +230,9 @@ func (s *ReplicaServer) Commit(ctx context.Context, CommitMsg *pb2.CommitMsg) (*
 	//模拟投票处理和传输时延
 	time.Sleep(d.GetLatency())
 
-	go leader.VoteCommit(context.Background(), CommitVoteMsg)
+	if !d.DenyVote {
+		go leader.VoteCommit(context.Background(), CommitVoteMsg)
+	}
 	return &emptypb.Empty{}, nil
 }
 
@@ -301,7 +306,9 @@ func (s *ReplicaServer) Decide(ctx context.Context, DecideMsg *pb2.DecideMsg) (*
 	//模拟投票处理和传输时延
 	time.Sleep(d.GetLatency())
 
-	go leader.NewView(context.Background(), NewViewMsg)
+	if !d.DenyVote {
+		go leader.NewView(context.Background(), NewViewMsg)
+	}
 	return &emptypb.Empty{}, nil
 }
 

@@ -14,13 +14,15 @@ var (
 			NumReplicas: 0,
 		},
 	}
+	DenyVote = false //是否拒绝投票
 )
 
 type Buildinfo struct {
-	DebugMode   bool  //调试模式开关
-	DockerMode  bool  //Docker模式开关
-	Threshold   int   //调试模式阈值
-	NumReplicas int32 //副本数量
+	DebugMode   bool    //调试模式开关
+	DockerMode  bool    //Docker模式开关
+	Threshold   int     //调试模式阈值
+	NumReplicas int32   //副本数量
+	DenyVote    []int32 //拒绝投票的副本id
 }
 
 type network struct {

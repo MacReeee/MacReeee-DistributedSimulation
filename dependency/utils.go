@@ -39,6 +39,13 @@ func LoadFromFile() {
 
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&Configs)
+	//检查自身ID是否在拒绝投票列表中
+	for _, id := range Configs.BuildInfo.DenyVote {
+		if id == ReplicaID {
+			DenyVote = true
+			break
+		}
+	}
 
 	log.Println("配置文件加载成功:")
 	encoder := json.NewEncoder(os.Stdout)

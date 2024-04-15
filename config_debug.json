@@ -3,7 +3,10 @@
         "DebugMode": true,
         "DockerMode": false,
         "Threshold": 3,
-        "NumReplicas": 4
+        "NumReplicas": 4,
+        "DenyVote": [
+            1
+        ]
     },
     "Network": {
         "Latency": 10,

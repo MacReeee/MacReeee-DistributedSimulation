@@ -1,14 +1,17 @@
 {
     "BuildInfo": {
-        "DebugMode": true,
+        "DebugMode": false,
         "DockerMode": false,
-        "Threshold": 6,
-        "NumReplicas": 10
+        "Threshold": 3,
+        "NumReplicas": 4,
+        "DenyVote": [
+            1
+        ]
     },
     "Network": {
-        "Latency": 100,
-        "ProcessTime": 20,
-        "BASE_Timeout": 5,
-        "MAX_Timeout": 10
+        "Latency": 10,
+        "ProcessTime": 1,
+        "BASE_Timeout": 50000,
+        "MAX_Timeout" : 200000
     }
 }
