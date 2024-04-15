@@ -116,6 +116,12 @@ func (s *ReplicaServer) Debug(ctx context.Context, debug *pb2.DebugMsg) (*pb2.De
 	case "reset", "r":
 		modules.MODULES.Reset <- true
 		return &pb2.DebugMsg{}, nil
+	case "panic", "p":
+		panic("panic: goroutine 194 [select]:\n" +
+			"google.golang.org/grpc/internal/grpcsync.(*CallbackSerializer).run(0xc0005142b0, {0x96b5d0, 0xc000520000})\n" +
+			"\t/home/a1/go/pkg/mod/google.golang.org/grpc@v1.60.1/internal/grpcsync/callback_serializer.go:76 +0x115\n" +
+			"created by google.golang.org/grpc/internal/grpcsync.NewCallbackSerializer in goroutine 37\n" +
+			"\t/home/a1/go/pkg/mod/google.golang.org/grpc@v1.60.1/internal/grpcsync/callback_serializer.go:52 +0x129")
 	default:
 		log.Println("未知的调试命令...")
 		return &pb2.DebugMsg{Response: "未知的调试命令: " + debug.Command}, nil
