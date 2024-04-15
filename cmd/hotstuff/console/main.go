@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
-	"distributed/consensus"
+	hotstuff "distributed/consensus"
 	d "distributed/dependency"
 	pb2 "distributed/pb"
 	"fmt"
@@ -117,9 +117,9 @@ func main() {
 			return
 		} else if cmd == "sa10" {
 			Command("sa", all...)
-			fmt.Println("等待10 min...")
-			<-time.After(10 * time.Minute)
-			Command("pause", all...)
+			fmt.Println("等待10 min 30 s...")
+			<-time.After(10*time.Minute + 30*time.Second)
+			Command("r", all...)
 		} else if cmd == "re" || cmd == "reload" {
 			d.LoadFromFile()
 			num = int(d.Configs.BuildInfo.NumReplicas)
@@ -127,8 +127,9 @@ func main() {
 			for i := 1; i <= num; i++ {
 				all[i-1] = int32(i)
 			}
+		} else {
+			Command(cmd, all...)
 		}
-		Command(cmd, all...)
 		fmt.Printf("\n")
 	}
 }

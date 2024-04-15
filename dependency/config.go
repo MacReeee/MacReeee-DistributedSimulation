@@ -32,15 +32,18 @@ type network struct {
 }
 
 func GetLatency() time.Duration {
-	configLatency := Configs.Network.Latency
+	configLatency := Configs.Network.Latency * 1000
 	random := GenerateExpRand(float64(configLatency))
 	latency := time.Duration(random)
-	return latency * time.Millisecond
+	//fmt.Printf("生成的随机数: %v\n", random)
+	return latency * time.Microsecond
 }
 
 func GetProcessTime() time.Duration {
-	ProcessTime := time.Duration(GenerateExpRand(float64(Configs.Network.ProcessTime)))
-	return ProcessTime * time.Millisecond
+	configProcessTime := Configs.Network.ProcessTime * 1000000
+	random := GenerateExpRand(float64(configProcessTime))
+	processTime := time.Duration(random)
+	return processTime * time.Nanosecond
 }
 
 func GetBASE_Timeout() time.Duration {
@@ -51,6 +54,7 @@ func GetMAX_Timeout() time.Duration {
 	return Configs.Network.MAX_Timeout * time.Millisecond
 }
 
-func GenerateExpRand(lambda float64) float64 {
-	return r.ExpFloat64() * lambda
+func GenerateExpRand(E float64) float64 {
+	lambda := 1 / E
+	return r.ExpFloat64() / lambda
 }

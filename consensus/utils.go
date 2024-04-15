@@ -27,6 +27,8 @@ const (
 	Switching   State = "Switching"
 )
 
+var mu = stsync.Mutex{}
+
 func MatchingMsg(Type pb2.MsgType, ViewNumber int64, TarType pb2.MsgType, TarviewNumber int64) (bool, error) {
 	condition1 := (Type == TarType)
 	if !condition1 {

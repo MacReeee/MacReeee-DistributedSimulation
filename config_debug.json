@@ -1,9 +1,9 @@
 {
     "BuildInfo": {
         "DebugMode": true,
-        "DockerMode": true,
-        "Threshold": 4,
-        "NumReplicas": 7
+        "DockerMode": false,
+        "Threshold": 3,
+        "NumReplicas": 4
     },
     "Network": {
         "Latency": 10,

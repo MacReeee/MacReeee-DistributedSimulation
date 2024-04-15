@@ -2,6 +2,7 @@ package dependency
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 )
@@ -38,5 +39,13 @@ func Test_ToFile(t *testing.T) {
 	err = encoder.Encode(config)
 	if err != nil {
 		t.Error("写入文件失败")
+	}
+}
+
+func Test_RandomExp(t *testing.T) {
+	LoadFromFile()
+	for i := 0; i < 100; i++ {
+		latency := GetProcessTime()
+		fmt.Printf("%v\n", latency)
 	}
 }
